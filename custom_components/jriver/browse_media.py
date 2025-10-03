@@ -174,7 +174,7 @@ async def browse_nodes(
     )
     # add HA provided nodes to the initial browse only
     if is_child is False:
-        with contextlib.suppress(media_source.BrowseError):
+        with contextlib.suppress(BrowseError):
             item = await media_source.async_browse_media(
                 hass, None, content_filter=media_source_content_filter
             )
