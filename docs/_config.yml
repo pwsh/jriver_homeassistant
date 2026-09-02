@@ -1,0 +1,55 @@
+title: JRiver Media Center for Home Assistant
+description: >-
+  Documentation for the JRiver Media Center custom integration for Home
+  Assistant: installation, configuration, entities, actions and automations.
+
+remote_theme: just-the-docs/just-the-docs
+
+url: "https://pwsh.github.io"
+baseurl: "/jriver_homeassistant"
+permalink: pretty
+
+plugins:
+  - jekyll-remote-theme
+
+# just-the-docs
+search_enabled: true
+search:
+  heading_level: 2
+  previews: 2
+  preview_words_before: 3
+  preview_words_after: 3
+  tokenizer_separator: /[\s/]+/
+  rel_url: true
+  button: false
+
+nav_enabled: true
+heading_anchors: true
+
+color_scheme: dark
+
+aux_links:
+  "Fork on GitHub":
+    - "https://github.com/pwsh/jriver_homeassistant"
+  "Upstream project":
+    - "https://github.com/3ll3d00d/jriver_homeassistant"
+aux_links_new_tab: true
+
+back_to_top: true
+back_to_top_text: "Back to top"
+
+footer_content: >-
+  Licensed under the MIT licence. Originally written by
+  <a href="https://github.com/3ll3d00d">3ll3d00d</a>; this site documents the
+  <a href="https://github.com/pwsh/jriver_homeassistant">pwsh</a> fork
+  (branch <code>v2-rework</code>, version 2.0.0).
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - vendor/
+  - .bundle/
+  - .jekyll-cache/
+  - node_modules/
+  - "*.gem"
+  - .sass-cache/

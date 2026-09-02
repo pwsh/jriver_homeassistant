@@ -9,6 +9,12 @@ the Media Center user interface, sensors describing what is playing, library bro
 Home Assistant media browser, and a set of actions for playlists, searches, DSP presets and
 sleep timers.
 
+**Documentation:** <https://pwsh.github.io/jriver_homeassistant/>
+
+**Fork:** this branch is a rework maintained at
+[pwsh/jriver_homeassistant](https://github.com/pwsh/jriver_homeassistant); upstream is
+[3ll3d00d/jriver_homeassistant](https://github.com/3ll3d00d/jriver_homeassistant).
+
 Version 2.0 vendors its own MCWS client, so the integration has **no external Python
 requirements**.
 

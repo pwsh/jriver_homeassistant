@@ -1,6 +1,18 @@
+---
+title: MCWS reference
+nav_order: 99
+---
+
 # MCWS function catalogue (scraped from a live MC 36.0.31 /MCWS/v1/doc, 2026-09-02)
 
-Source: the `/MCWS/v1/doc` page served by Media Center itself.
+This is the full list of functions the Media Center web service exposes. It was scraped
+from the `/MCWS/v1/doc` page served by a live Media Center 36.0.31 instance, so it
+describes that version; older servers expose fewer functions. The integration wraps only a
+subset of these — the catalogue is here as a reference when extending the vendored client.
+
+The "Click here" example links below are relative links back to the Media Center instance
+that served the original page, so they do not resolve from this site.
+
 ### Alive
 
 Simple query to ensure the server is running and to check versions.

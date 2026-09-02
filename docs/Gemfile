@@ -1,0 +1,9 @@
+# Local preview only. GitHub Pages is built by the Actions workflow in
+# .github/workflows/pages.yaml, which uses actions/jekyll-build-pages.
+#
+#   cd docs && bundle install && bundle exec jekyll serve
+source "https://rubygems.org"
+
+gem "github-pages", group: :jekyll_plugins
+gem "jekyll-remote-theme"
+gem "webrick"
