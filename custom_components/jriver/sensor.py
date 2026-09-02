@@ -1,4 +1,4 @@
-"""Sensor platform for the jriver integration."""
+"""Sensor platform for the JRiver Media Center integration."""
 
 from __future__ import annotations
 
@@ -6,209 +6,208 @@ from collections.abc import Mapping
 import logging
 from typing import Any
 
-from hamcws import MediaServer
-
-from homeassistant.components.sensor import SensorEntity
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
+)
+from homeassistant.const import EntityCategory
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from . import MediaServerUpdateCoordinator
 from .const import (
-    DATA_COORDINATOR,
-    DATA_EXTRA_FIELDS,
-    DATA_MEDIA_SERVER,
-    DATA_SERVER_NAME,
-    DOMAIN,
-    DATA_ZONES,
+    KIND_ACTIVE_ZONE,
+    KIND_PLAYING_NOW,
+    KIND_PLAYLIST,
+    KIND_UI_MODE,
+    KIND_VERSION,
+    NEXT_UP_COUNT,
 )
+from .coordinator import MediaServerUpdateCoordinator
 from .entity import MediaServerEntity
+from .mcws import ViewMode, Zone
+from .models import JRiverConfigEntry
 
 _LOGGER = logging.getLogger(__name__)
 
+PARALLEL_UPDATES = 0
+
 
 async def async_setup_entry(
-        hass: HomeAssistant,
-        config_entry: ConfigEntry,
-        async_add_entities: AddConfigEntryEntitiesCallback,
+    hass: HomeAssistant,
+    entry: JRiverConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up the JRiver Media Center sensor platform from a config entry."""
-    data = hass.data[DOMAIN][config_entry.entry_id]
-    extra_fields = data[DATA_EXTRA_FIELDS]
-    name = data[DATA_SERVER_NAME]
-    allowed_zones = data[DATA_ZONES]
-    ms: MediaServer = data[DATA_MEDIA_SERVER]
-    uid_prefix = config_entry.unique_id or config_entry.entry_id
+    """Set up the JRiver sensor platform."""
+    runtime = entry.runtime_data
+    coordinator = runtime.coordinator
 
     entities: list[SensorEntity] = [
-        JRiverActiveZoneSensor(
-            data[DATA_COORDINATOR], f"{uid_prefix}_activezone", f"{name} (Active Zone)"
-        ),
-        JRiverUISensor(
-            data[DATA_COORDINATOR], f"{uid_prefix}_uimode", f"{name} (UI Mode)"
-        )
+        JRiverActiveZoneSensor(coordinator, entry),
+        JRiverUiModeSensor(coordinator, entry),
+        JRiverVersionSensor(coordinator, entry),
     ]
-
-    zones = await ms.get_zones()
-    for z in zones:
-        if not allowed_zones or z.name in allowed_zones:
-            entities.extend(
-                [
-                    JRiverPlayingNowSensor(
-                        data[DATA_COORDINATOR],
-                        f"{uid_prefix}_{z}_playingnow",
-                        f"{name} - {z} (Playing Now)",
-                        z.name,
-                        extra_fields,
-                    ),
-                    JRiverAudioPlayingDirectSensor(
-                        data[DATA_COORDINATOR],
-                        f"{uid_prefix}_{z}_audiodirect",
-                        f"{name} - {z} (Audio Is Direct)",
-                        z.name,
-                    ),
-                    JRiverPlaylistSensor(
-                        data[DATA_COORDINATOR],
-                        f"{uid_prefix}_{z}_playlist",
-                        f"{name} - {z} (Playlist)",
-                        z.name,
-                    ),
-                ]
-            )
+    for zone in coordinator.data.zones:
+        if runtime.zones and zone.name not in runtime.zones:
+            continue
+        entities.append(JRiverPlayingNowSensor(coordinator, entry, zone))
+        entities.append(JRiverPlaylistSensor(coordinator, entry, zone))
 
     async_add_entities(entities)
 
 
 class JRiverActiveZoneSensor(MediaServerEntity, SensorEntity):
-    """Exposes current active zone."""
+    """Expose the currently active zone."""
 
-    _attr_name = None
+    _attr_translation_key = KIND_ACTIVE_ZONE
+    _attr_device_class = SensorDeviceClass.ENUM
 
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        self._attr_native_value = self.coordinator.data.get_active_zone_name()
-        self.async_write_ha_state()
+    def __init__(self, coordinator: MediaServerUpdateCoordinator, entry: JRiverConfigEntry) -> None:
+        """Initialise the sensor."""
+        super().__init__(coordinator, entry, KIND_ACTIVE_ZONE)
+
+    @property
+    def options(self) -> list[str]:
+        """Return the known zone names."""
+        return self.data.zone_names
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the active zone name."""
+        name = self.data.active_zone_name
+        return name if name in self.options else None
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any]:
-        """Return the state attributes."""
-        return {"id": self.coordinator.data.get_active_zone_id()}
+        """Return the active zone id."""
+        return {"id": self.data.active_zone_id}
 
 
-class JRiverPlayingNowSensor(MediaServerEntity, SensorEntity):
-    """Exposes detailed information about what is playing in a given zone."""
+class JRiverUiModeSensor(MediaServerEntity, SensorEntity):
+    """Expose the Media Center UI mode."""
 
-    _attr_name = None
+    _attr_translation_key = KIND_UI_MODE
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_options = [mode.name.lower() for mode in ViewMode]
 
-    def __init__(
-            self,
-            coordinator: MediaServerUpdateCoordinator,
-            unique_id: str,
-            name: str,
-            zone_name: str,
-            extra_fields: list[str],
-    ) -> None:
-        """Init the sensor."""
-        super().__init__(coordinator, unique_id, name)
-        self._zone_name = zone_name
-        self._extra_fields = extra_fields
+    def __init__(self, coordinator: MediaServerUpdateCoordinator, entry: JRiverConfigEntry) -> None:
+        """Initialise the sensor."""
+        super().__init__(coordinator, entry, KIND_UI_MODE)
 
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        info = self.coordinator.data.get_playback_info(self._zone_name)
-        if not info:
-            return
-        self._attr_native_value = info.name
-        self.async_write_ha_state()
+    @property
+    def native_value(self) -> str | None:
+        """Return the current UI mode."""
+        return self.data.view_mode.name.lower()
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any]:
-        """Return the state attributes."""
-        info = self.coordinator.data.get_playback_info(self._zone_name)
-        if not info:
+        """Return the raw mode id."""
+        return {"id": int(self.data.view_mode)}
+
+
+class JRiverVersionSensor(MediaServerEntity, SensorEntity):
+    """Expose the Media Center version."""
+
+    _attr_translation_key = KIND_VERSION
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+
+    def __init__(self, coordinator: MediaServerUpdateCoordinator, entry: JRiverConfigEntry) -> None:
+        """Initialise the sensor."""
+        super().__init__(coordinator, entry, KIND_VERSION)
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the version string."""
+        info = self.data.server_info
+        return info.version if info else None
+
+    @property
+    def extra_state_attributes(self) -> Mapping[str, Any]:
+        """Return the platform and library version."""
+        info = self.data.server_info
+        if info is None:
             return {}
         return {
-            "is_active": self.coordinator.data.get_active_zone_name()
-                         == self._zone_name,
-            **info.as_dict(),
+            "platform": info.platform,
+            "library_version": info.library_version,
+            "product_version": info.product_version,
         }
 
 
-class JRiverAudioPlayingDirectSensor(MediaServerEntity, SensorEntity):
-    """Exposes whether the given zone is playing direct."""
+class JRiverPlayingNowSensor(MediaServerEntity, SensorEntity):
+    """Expose what is playing in a zone."""
 
-    _attr_name = None
+    _attr_translation_key = KIND_PLAYING_NOW
 
     def __init__(
-            self,
-            coordinator: MediaServerUpdateCoordinator,
-            unique_id: str,
-            name: str,
-            zone_name: str,
+        self,
+        coordinator: MediaServerUpdateCoordinator,
+        entry: JRiverConfigEntry,
+        zone: Zone,
     ) -> None:
-        """Init the sensor."""
-        super().__init__(coordinator, unique_id, name)
-        self._zone_name = zone_name
+        """Initialise the sensor."""
+        super().__init__(coordinator, entry, KIND_PLAYING_NOW, zone_id=zone.id, zone_name=zone.name)
 
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        info = self.coordinator.data.get_audio_path_is_direct(self._zone_name)
-        if not info:
-            return
-        self._attr_native_value = info.is_direct
-        self.async_write_ha_state()
+    @property
+    def native_value(self) -> str | None:
+        """Return the name of the playing file."""
+        info = self.data.playback_info(self._zone_id)
+        return info.name if info else None
+
+    @property
+    def extra_state_attributes(self) -> Mapping[str, Any]:
+        """Return the track metadata, excluding anything that ticks every second."""
+        info = self.data.playback_info(self._zone_id)
+        if info is None:
+            return {}
+        attributes = {
+            key: value
+            for key, value in info.as_dict().items()
+            if key not in ("position_ms", "duration_ms", "elapsed_time_display")
+        }
+        attributes["is_active"] = self.data.active_zone_id == self._zone_id
+        return attributes
 
 
 class JRiverPlaylistSensor(MediaServerEntity, SensorEntity):
-    """Exposes the playlist in a given zone."""
+    """Expose the size of the playing now list in a zone."""
 
-    _attr_name = None
+    _attr_translation_key = KIND_PLAYLIST
+    _attr_native_unit_of_measurement = "tracks"
+    _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
-            self,
-            coordinator: MediaServerUpdateCoordinator,
-            unique_id: str,
-            name: str,
-            zone_name: str,
+        self,
+        coordinator: MediaServerUpdateCoordinator,
+        entry: JRiverConfigEntry,
+        zone: Zone,
     ) -> None:
-        """Init the sensor."""
-        super().__init__(coordinator, unique_id, name)
-        self._zone_name = zone_name
+        """Initialise the sensor."""
+        super().__init__(coordinator, entry, KIND_PLAYLIST, zone_id=zone.id, zone_name=zone.name)
 
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        info = self.coordinator.data.get_playlist(self._zone_name)
-        if not info:
-            self._attr_native_value = False
-            return
-        self._attr_native_value = True
-        self.async_write_ha_state()
+    @property
+    def native_value(self) -> int | None:
+        """Return the number of entries in the playing now list."""
+        playlist = self.data.playlist(self._zone_id)
+        return len(playlist) if playlist is not None else None
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any]:
-        """Return the state attributes."""
-        info = self.coordinator.data.get_playlist(self._zone_name)
-        if not info:
-            return {}
-        return {"entries": info}
-
-
-class JRiverUISensor(MediaServerEntity, SensorEntity):
-    """Exposes the state of the UI."""
-
-    _attr_name = None
-
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        self._attr_native_value = self.coordinator.data.view_mode.name
-        self.async_write_ha_state()
-
-    @property
-    def extra_state_attributes(self) -> Mapping[str, Any]:
-        """Return the state attributes."""
-        return {"id": self.coordinator.data.view_mode.value}
+        """Return a bounded view of the upcoming entries."""
+        playlist = self.data.playlist(self._zone_id)
+        if not playlist:
+            return {"next_up": []}
+        info = self.data.playback_info(self._zone_id)
+        start = max(0, info.playing_now_position + 1) if info else 0
+        next_up = [
+            {
+                "key": entry.get("Key"),
+                "name": entry.get("Name"),
+                "artist": entry.get("Artist"),
+                "album": entry.get("Album"),
+            }
+            for entry in playlist[start : start + NEXT_UP_COUNT]
+        ]
+        return {"next_up": next_up}

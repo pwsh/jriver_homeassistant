@@ -1,20 +1,5 @@
 # Describes the format for available jriver services
 
-add_to_playlist:
-  target:
-    entity:
-      integration: jriver
-      domain: media_player
-  fields:
-    query:
-      example: "[Album Artist (auto)]=[AIR] ~sort=[Date],[Album],[Track #]"
-      selector:
-        text:
-    playlist_path:
-      example: Alarms\Morning\Wakeup
-      selector:
-        text:
-
 append_search_results_to_playlist:
   target:
     entity:
@@ -22,6 +7,7 @@ append_search_results_to_playlist:
       domain: media_player
   fields:
     query:
+      required: true
       example: "[Album Artist (auto)]=[AIR] ~sort=[Date],[Album],[Track #]"
       selector:
         text:
@@ -33,9 +19,31 @@ play_playlist:
       domain: media_player
   fields:
     playlist_path:
+      required: true
       example: Alarms\Morning\Wakeup
       selector:
         text:
+
+play_search:
+  target:
+    entity:
+      integration: jriver
+      domain: media_player
+  fields:
+    query:
+      required: true
+      example: "[Album Artist (auto)]=[AIR] ~sort=[Date],[Album],[Track #]"
+      selector:
+        text:
+    play_mode:
+      default: replace
+      selector:
+        select:
+          translation_key: play_mode
+          options:
+            - replace
+            - add
+            - next
 
 seek_relative:
   target:
@@ -44,9 +52,14 @@ seek_relative:
       domain: media_player
   fields:
     seek_duration:
+      required: true
       example: -5
       selector:
         number:
+          min: -3600
+          max: 3600
+          mode: box
+          unit_of_measurement: s
 
 adjust_volume:
   target:
@@ -55,11 +68,14 @@ adjust_volume:
       domain: media_player
   fields:
     delta:
+      required: true
       example: -5
       selector:
         number:
           min: -100
           max: 100
+          mode: box
+          unit_of_measurement: "%"
 
 activate_zone:
   target:
@@ -86,10 +102,12 @@ send_mcc:
         number:
           min: 10000
           max: 40000
+          mode: box
     parameter:
       example: 2
       selector:
         number:
+          mode: box
     block:
       default: true
       selector:
@@ -99,12 +117,99 @@ send_mcc:
       selector:
         text:
 
+stop_after:
+  target:
+    entity:
+      integration: jriver
+      domain: remote
+  fields:
+    minutes:
+      example: 30
+      selector:
+        number:
+          min: 1
+          max: 1440
+          mode: box
+          unit_of_measurement: min
+    tracks:
+      example: 3
+      selector:
+        number:
+          min: 1
+          max: 100
+          mode: box
+    current:
+      example: true
+      selector:
+        boolean:
+
+load_dsp_preset:
+  target:
+    entity:
+      integration: jriver
+      domain: remote
+  fields:
+    preset:
+      required: true
+      example: Night Mode
+      selector:
+        text:
+    zone_name:
+      example: Player
+      selector:
+        text:
+
 wake:
   fields:
     entity_id:
       example: "remote.mcserver"
-      required: true
       selector:
         entity:
-          integration: jriver
-          domain: remote
+          multiple: true
+          filter:
+            - integration: jriver
+    device_id:
+      selector:
+        device:
+          multiple: true
+          filter:
+            - integration: jriver
+
+get_playlist:
+  fields:
+    entity_id:
+      required: true
+      example: "media_player.mcserver"
+      selector:
+        entity:
+          filter:
+            - integration: jriver
+              domain: media_player
+
+search:
+  fields:
+    entity_id:
+      required: true
+      example: "media_player.mcserver"
+      selector:
+        entity:
+          filter:
+            - integration: jriver
+              domain: media_player
+    query:
+      required: true
+      example: "[Album Artist (auto)]=[AIR]"
+      selector:
+        text:
+    fields:
+      example: "[Name, Artist, Album]"
+      selector:
+        text:
+          multiple: true
+    limit:
+      default: 100
+      selector:
+        number:
+          min: 1
+          max: 500
+          mode: box

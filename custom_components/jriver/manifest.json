@@ -4,11 +4,13 @@
   "after_dependencies": ["wake_on_lan"],
   "codeowners": ["@3ll3d00d"],
   "config_flow": true,
+  "dependencies": ["media_source"],
   "documentation": "https://github.com/3ll3d00d/jriver_homeassistant/",
-  "homekit": {},
+  "integration_type": "hub",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/3ll3d00d/jriver_homeassistant/issues",
-  "loggers": ["hamcws"],
-  "requirements": ["hamcws==0.2.7"],
-  "version": "0.4.4"
+  "loggers": ["custom_components.jriver"],
+  "quality_scale": "silver",
+  "requirements": [],
+  "version": "2.0.0"
 }

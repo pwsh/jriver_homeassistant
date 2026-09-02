@@ -2,286 +2,250 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
+from typing import Any
 
-from hamcws import (
-    MediaServer,
-    MediaSubType as mc_MediaSubType,
-    MediaType as mc_MediaType,
-    get_mcws_connection,
-)
-import voluptuous as vol
-
-from homeassistant.components.media_player import MediaClass, MediaType
-from homeassistant.components.wake_on_lan import (
-    DOMAIN as WOL_DOMAIN,
-    SERVICE_SEND_MAGIC_PACKET,
-)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
-    CONF_ENTITY_ID,
+    CONF_API_KEY,
     CONF_HOST,
     CONF_MAC,
     CONF_NAME,
     CONF_PASSWORD,
     CONF_PORT,
     CONF_SSL,
+    CONF_TIMEOUT,
     CONF_USERNAME,
     EVENT_HOMEASSISTANT_STOP,
     Platform,
 )
-from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.helpers import config_validation as cv
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import config_validation as cv, entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
     CONF_BROWSE_PATHS,
+    CONF_DEVICE_PER_ZONE,
     CONF_DEVICE_ZONES,
+    CONF_DSP_PRESETS,
     CONF_EXTRA_FIELDS,
-    DATA_BROWSE_PATHS,
-    DATA_COORDINATOR,
-    DATA_EXTRA_FIELDS,
-    DATA_MAC_ADDRESSES,
-    DATA_MEDIA_SERVER,
-    DATA_REMOVE_STOP_LISTENER,
-    DATA_REMOVE_UPDATE_LISTENER,
-    DATA_SERVER_NAME,
-    DATA_ZONES,
+    CONF_POLL_INTERVAL,
+    CONF_TURN_OFF_BEHAVIOUR,
+    CONF_USE_WOL,
+    DEFAULT_POLL_INTERVAL,
+    DEFAULT_TIMEOUT,
+    DEFAULT_TURN_OFF_BEHAVIOUR,
     DOMAIN,
-    SERVICE_WAKE,
+    KIND_ACTIVE_ZONE,
+    KIND_MEDIA_PLAYER,
+    KIND_PLAYING_NOW,
+    KIND_PLAYLIST,
+    KIND_UI_MODE,
+    TurnOffBehaviour,
 )
 from .coordinator import MediaServerUpdateCoordinator
+from .mcws import MediaServer, get_mcws_connection
+from .models import JRiverConfigEntry, JRiverRuntimeData
+from .services import async_register_services
 
 _LOGGER = logging.getLogger(__name__)
-PLATFORMS = [Platform.MEDIA_PLAYER, Platform.REMOTE, Platform.SENSOR]
 
-PLATFORM_SCHEMA = cv.platform_only_config_schema
+PLATFORMS = [
+    Platform.BINARY_SENSOR,
+    Platform.MEDIA_PLAYER,
+    Platform.REMOTE,
+    Platform.SENSOR,
+]
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+#: option keys that used to live in ``entry.data``
+MIGRATED_OPTION_KEYS = (
+    CONF_BROWSE_PATHS,
+    CONF_DEVICE_PER_ZONE,
+    CONF_DEVICE_ZONES,
+    CONF_EXTRA_FIELDS,
+    CONF_USE_WOL,
+)
+
+
+def get_option(entry: ConfigEntry, key: str, default: Any = None) -> Any:
+    """Read an option, falling back to entry data then the given default."""
+    if key in entry.options:
+        return entry.options[key]
+    if key in entry.data:
+        return entry.data[key]
+    return default
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the JRiver Media Center component."""
-
-    async def async_send_wol(call: ServiceCall) -> None:
-        """Send WOL packet to each MAC address."""
-        entity_id: str | None = call.data.get(CONF_ENTITY_ID)
-        if not entity_id:
-            _LOGGER.warning("Unable to send WOL, no entity_id specified")
-            return
-
-        tokens = entity_id.split(".")
-        if len(tokens) != 2:
-            _LOGGER.warning(
-                "Unable to send WOL, unexpected entity_id format %s", entity_id
-            )
-            return
-
-        domain_data = next(
-            (
-                data
-                for data in hass.data[DOMAIN].values()
-                if data[DATA_SERVER_NAME].casefold() == tokens[1].casefold()
-            ),
-            None,
-        )
-        if not domain_data:
-            _LOGGER.warning(
-                "Unable to send WOL, no such server found in domain %s", entity_id
-            )
-            return
-
-        if DATA_MAC_ADDRESSES not in domain_data:
-            _LOGGER.warning(
-                "Unable to send WOL, No MAC addresses found in entity %s", entity_id
-            )
-            return
-
-        mac_addresses: list[str] = domain_data[DATA_MAC_ADDRESSES]
-
-        if not hass.services.has_service(WOL_DOMAIN, SERVICE_SEND_MAGIC_PACKET):
-            _LOGGER.warning(
-                "Service wake_on_lan not configured, unable to send WOL to %s for %s",
-                str(mac_addresses),
-                entity_id,
-            )
-            return
-
-        _LOGGER.debug("Sending WOL to %s for %s", str(mac_addresses), entity_id)
-        await asyncio.gather(
-            *[
-                hass.services.async_call(
-                    WOL_DOMAIN, SERVICE_SEND_MAGIC_PACKET, service_data={"mac": mac}
-                )
-                for mac in mac_addresses
-            ]
-        )
-
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_WAKE,
-        async_send_wol,
-        vol.Schema({vol.Required(CONF_ENTITY_ID): str}),
-    )
-
+    async_register_services(hass)
     return True
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up mcws from a config entry."""
-    ms = _get_ms(hass, entry)
-
-    extra_fields: list[str] | None = (
-        entry.options[CONF_EXTRA_FIELDS]
-        if CONF_EXTRA_FIELDS in entry.options
-        else entry.data[CONF_EXTRA_FIELDS]
-    )
-
-    ms_coordinator = MediaServerUpdateCoordinator(hass, ms, extra_fields)
-
-    async def _close(event):
-        _LOGGER.debug("[%s] Closing media server connection", entry.entry_id)
-        await ms.close()
-
-    remove_stop_listener = hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _close)
-    remove_update_listener = entry.add_update_listener(reconfigure_entry)
-
-    hass.data.setdefault(DOMAIN, {})
-    browse_paths = (
-        entry.options[CONF_BROWSE_PATHS]
-        if CONF_BROWSE_PATHS in entry.options
-        else entry.data[CONF_BROWSE_PATHS]
-    )
-
-    mac_addresses = []
-    if CONF_MAC in entry.data:
-        mac_addresses = entry.data[CONF_MAC]
-    if CONF_MAC in entry.options:
-        _LOGGER.debug("[%s] Using MAC addresses from options", entry.entry_id)
-        mac_addresses = entry.options[CONF_MAC]
-
-    hass.data[DOMAIN][entry.entry_id] = {
-        DATA_MEDIA_SERVER: ms,
-        DATA_REMOVE_STOP_LISTENER: remove_stop_listener,
-        DATA_REMOVE_UPDATE_LISTENER: remove_update_listener,
-        DATA_ZONES: entry.data[CONF_DEVICE_ZONES],
-        DATA_BROWSE_PATHS: browse_paths,
-        DATA_COORDINATOR: ms_coordinator,
-        DATA_SERVER_NAME: entry.data[CONF_NAME],
-        DATA_EXTRA_FIELDS: extra_fields,
-        DATA_MAC_ADDRESSES: mac_addresses,
-    }
-
-    await ms_coordinator.async_config_entry_first_refresh()
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
-    return True
-
-
-def _get_ms(hass: HomeAssistant, entry: ConfigEntry) -> MediaServer:
-    """Get a MediaServer instance."""
-    conn = get_mcws_connection(
+def _build_media_server(hass: HomeAssistant, entry: JRiverConfigEntry) -> MediaServer:
+    """Create a MediaServer client from the config entry."""
+    connection = get_mcws_connection(
         entry.data[CONF_HOST],
         entry.data[CONF_PORT],
-        username=entry.data[CONF_USERNAME],
-        password=entry.data[CONF_PASSWORD],
-        ssl=entry.data[CONF_SSL],
+        username=entry.data.get(CONF_USERNAME),
+        password=entry.data.get(CONF_PASSWORD),
+        ssl=entry.data.get(CONF_SSL, False),
+        timeout=entry.data.get(CONF_TIMEOUT, DEFAULT_TIMEOUT),
         session=async_get_clientsession(hass),
-        timeout=20
     )
-    return MediaServer(conn)
+    return MediaServer(connection)
 
 
-async def reconfigure_entry(hass: HomeAssistant, entry: ConfigEntry):
-    """Handle options update."""
-    await hass.config_entries.async_reload(entry.entry_id)
+async def async_setup_entry(hass: HomeAssistant, entry: JRiverConfigEntry) -> bool:
+    """Set up JRiver Media Center from a config entry."""
+    server = _build_media_server(hass, entry)
+
+    zones: list[str] = get_option(entry, CONF_DEVICE_ZONES) or []
+    per_zone: bool = bool(get_option(entry, CONF_DEVICE_PER_ZONE, False))
+    extra_fields: list[str] = get_option(entry, CONF_EXTRA_FIELDS) or []
+    browse_paths: list[str] = get_option(entry, CONF_BROWSE_PATHS) or []
+    mac_addresses: list[str] = get_option(entry, CONF_MAC) or []
+    if not get_option(entry, CONF_USE_WOL, bool(mac_addresses)):
+        mac_addresses = []
+    poll_interval = int(get_option(entry, CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL))
+    try:
+        turn_off_behaviour = TurnOffBehaviour(
+            get_option(entry, CONF_TURN_OFF_BEHAVIOUR, DEFAULT_TURN_OFF_BEHAVIOUR)
+        )
+    except ValueError:
+        turn_off_behaviour = DEFAULT_TURN_OFF_BEHAVIOUR
+
+    coordinator = MediaServerUpdateCoordinator(
+        hass,
+        entry,
+        server,
+        extra_fields=extra_fields,
+        allowed_zones=zones,
+        poll_interval=poll_interval,
+    )
+
+    entry.runtime_data = JRiverRuntimeData(
+        server=server,
+        coordinator=coordinator,
+        server_name=entry.data.get(CONF_NAME) or entry.data.get(CONF_HOST, "JRiver"),
+        zones=zones,
+        browse_paths=browse_paths,
+        extra_fields=extra_fields,
+        mac_addresses=mac_addresses,
+        per_zone=per_zone,
+        turn_off_behaviour=turn_off_behaviour,
+        dsp_presets=list(get_option(entry, CONF_DSP_PRESETS) or []),
+    )
+
+    async def _close(_event) -> None:
+        await server.close()
+
+    entry.async_on_unload(hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _close))
+    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
+
+    await coordinator.async_config_entry_first_refresh()
+    await _async_migrate_zone_unique_ids(hass, entry)
+
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    return True
 
 
-def _translate_to_media_type(
-    media_type: mc_MediaType | str | None,
-    media_sub_type: mc_MediaSubType | str | None,
-    single: bool = False,
-) -> MediaType | str:
-    """Convert JRiver MediaType/SubType to HA MediaType."""
-    if media_type == mc_MediaType.VIDEO:
-        if media_sub_type == mc_MediaSubType.MOVIE:
-            return MediaType.MOVIE
-        if media_sub_type == mc_MediaSubType.TV_SHOW:
-            return MediaType.EPISODE if single else MediaType.TVSHOW
-        return MediaType.VIDEO
-
-    if media_type == mc_MediaType.AUDIO:
-        if single:
-            return MediaType.TRACK
-        return MediaType.MUSIC
-
-    if media_type == mc_MediaType.TV:
-        if single:
-            return MediaType.CHANNEL
-        return MediaType.TVSHOW
-
-    if media_type == mc_MediaType.IMAGE:
-        return MediaType.IMAGE
-
-    if media_type == mc_MediaType.PLAYLIST:
-        return MediaType.PLAYLIST
-
-    if not media_type:
-        if media_sub_type == mc_MediaSubType.MOVIE:
-            return MediaType.MOVIE
-        if media_sub_type == mc_MediaSubType.TV_SHOW:
-            return MediaType.EPISODE if single else MediaType.TVSHOW
-        if media_sub_type == mc_MediaSubType.MUSIC:
-            return MediaType.TRACK if single else MediaType.MUSIC
-
-    return ""
-
-
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: JRiverConfigEntry) -> bool:
     """Unload a config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    if unload_ok and DOMAIN in hass.data:
-        data = hass.data[DOMAIN].pop(entry.entry_id)
-        await data[DATA_MEDIA_SERVER].close()
-        data[DATA_REMOVE_STOP_LISTENER]()
-        data[DATA_REMOVE_UPDATE_LISTENER]()
-
+    if unload_ok:
+        await entry.runtime_data.server.close()
     return unload_ok
 
 
-def _translate_to_media_class(
-    media_type: mc_MediaType | str | None,
-    media_sub_type: mc_MediaSubType | str | None,
-    single: bool = False,
-) -> MediaClass | str:
-    """Convert JRiver MediaType/SubType to HA MediaClass."""
-    if media_type == mc_MediaType.VIDEO:
-        if media_sub_type == mc_MediaSubType.MOVIE:
-            return MediaClass.MOVIE
-        if media_sub_type == mc_MediaSubType.TV_SHOW:
-            return MediaClass.EPISODE if single else MediaClass.TV_SHOW
-        return MediaClass.VIDEO
+async def _async_update_listener(hass: HomeAssistant, entry: JRiverConfigEntry) -> None:
+    """Reload the entry when its options change."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
-    if media_type == mc_MediaType.AUDIO:
-        if single:
-            return MediaClass.TRACK
-        return MediaClass.MUSIC
 
-    if media_type == mc_MediaType.TV:
-        return MediaClass.CHANNEL
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate an old config entry."""
+    if entry.version > 2:
+        return False
 
-    if media_type == mc_MediaType.IMAGE:
-        return MediaClass.IMAGE
+    if entry.version == 1:
+        _LOGGER.debug("Migrating %s from version 1 to 2", entry.entry_id)
+        data = dict(entry.data)
+        options = dict(entry.options)
+        for key in MIGRATED_OPTION_KEYS:
+            value = data.pop(key, None)
+            if key not in options and value is not None:
+                options[key] = value
+        options.setdefault(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)
+        options.setdefault(CONF_TURN_OFF_BEHAVIOUR, DEFAULT_TURN_OFF_BEHAVIOUR.value)
+        options.setdefault(CONF_DSP_PRESETS, [])
+        data.setdefault(CONF_TIMEOUT, DEFAULT_TIMEOUT)
+        data.setdefault(CONF_API_KEY, "")
 
-    if media_type == mc_MediaType.PLAYLIST:
-        return MediaClass.PLAYLIST
+        await _async_migrate_server_unique_ids(hass, entry)
 
-    if not media_type:
-        if media_sub_type == mc_MediaSubType.MOVIE:
-            return MediaClass.MOVIE
-        if media_sub_type == mc_MediaSubType.TV_SHOW:
-            return MediaClass.EPISODE if single else MediaClass.TV_SHOW
-        if media_sub_type == mc_MediaSubType.MUSIC:
-            return MediaClass.TRACK if single else MediaClass.MUSIC
+        hass.config_entries.async_update_entry(entry, data=data, options=options, version=2)
 
-    return ""
+    return True
+
+
+def _uid(entry: ConfigEntry) -> str:
+    return entry.unique_id or entry.entry_id
+
+
+async def _async_migrate_server_unique_ids(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Rewrite the unique ids that do not depend on knowing the zone ids."""
+    prefix = _uid(entry)
+    mapping = {
+        f"{prefix}_player": f"{prefix}_{KIND_MEDIA_PLAYER}",
+        f"{prefix}_activezone": f"{prefix}_{KIND_ACTIVE_ZONE}",
+        f"{prefix}_uimode": f"{prefix}_{KIND_UI_MODE}",
+    }
+
+    @callback
+    def _migrate(entity: er.RegistryEntry) -> dict[str, Any] | None:
+        if (new_id := mapping.get(entity.unique_id)) and new_id != entity.unique_id:
+            _LOGGER.debug("Migrating %s to %s", entity.unique_id, new_id)
+            return {"new_unique_id": new_id}
+        return None
+
+    await er.async_migrate_entries(hass, entry.entry_id, _migrate)
+
+
+async def _async_migrate_zone_unique_ids(hass: HomeAssistant, entry: JRiverConfigEntry) -> None:
+    """Rewrite zone name based unique ids now that the zone ids are known."""
+    zones = entry.runtime_data.coordinator.data.zones
+    if not zones:
+        return
+
+    prefix = _uid(entry)
+    mapping: dict[str, str] = {}
+    remove: set[str] = set()
+    for zone in zones:
+        mapping[f"{prefix}_player-{zone.name}"] = f"{prefix}_zone_{zone.id}_{KIND_MEDIA_PLAYER}"
+        mapping[f"{prefix}_{zone.name}_playingnow"] = f"{prefix}_zone_{zone.id}_{KIND_PLAYING_NOW}"
+        mapping[f"{prefix}_{zone.name}_playlist"] = f"{prefix}_zone_{zone.id}_{KIND_PLAYLIST}"
+        # the audio direct entity moved from sensor to binary_sensor so the old
+        # registry entry cannot be reused, drop it instead
+        remove.add(f"{prefix}_{zone.name}_audiodirect")
+
+    registry = er.async_get(hass)
+    for entity in er.async_entries_for_config_entry(registry, entry.entry_id):
+        if entity.unique_id in remove and entity.domain == "sensor":
+            _LOGGER.debug("Removing obsolete entity %s", entity.entity_id)
+            registry.async_remove(entity.entity_id)
+
+    @callback
+    def _migrate(entity: er.RegistryEntry) -> dict[str, Any] | None:
+        if new_id := mapping.get(entity.unique_id):
+            if new_id != entity.unique_id and not registry.async_get_entity_id(
+                entity.domain, DOMAIN, new_id
+            ):
+                _LOGGER.debug("Migrating %s to %s", entity.unique_id, new_id)
+                return {"new_unique_id": new_id}
+        return None
+
+    await er.async_migrate_entries(hass, entry.entry_id, _migrate)

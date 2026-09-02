@@ -1,25 +1,65 @@
 {
+  "entity": {
+    "binary_sensor": {
+      "audio_direct": {
+        "default": "mdi:transit-connection-variant",
+        "state": {
+          "off": "mdi:tune-vertical",
+          "on": "mdi:transit-connection-horizontal"
+        }
+      }
+    },
+    "sensor": {
+      "active_zone": {
+        "default": "mdi:speaker-multiple"
+      },
+      "playing_now": {
+        "default": "mdi:music-note"
+      },
+      "playlist": {
+        "default": "mdi:playlist-music"
+      },
+      "ui_mode": {
+        "default": "mdi:monitor-dashboard"
+      },
+      "version": {
+        "default": "mdi:information-outline"
+      }
+    }
+  },
   "services": {
-    "add_to_playlist": {
-      "service": "mdi:playlist-plus"
-    },
-    "append_search_results_to_playlist": {
-      "service": "mdi:playlist-plus"
-    },
-    "play_playlist": {
-      "service": "mdi:playlist-play"
-    },
-    "seek_relative": {
-      "service": "mdi:arrow-expand-horizontal"
+    "activate_zone": {
+      "service": "mdi:map-clock"
     },
     "adjust_volume": {
       "service": "mdi:volume-source"
     },
-    "activate_zone": {
-      "service": "mdi:map-clock"
+    "append_search_results_to_playlist": {
+      "service": "mdi:playlist-plus"
+    },
+    "get_playlist": {
+      "service": "mdi:playlist-music"
+    },
+    "load_dsp_preset": {
+      "service": "mdi:equalizer"
+    },
+    "play_playlist": {
+      "service": "mdi:playlist-play"
+    },
+    "play_search": {
+      "service": "mdi:magnify-plus"
+    },
+    "search": {
+      "service": "mdi:magnify"
+    },
+    "seek_relative": {
+      "service": "mdi:arrow-expand-horizontal"
     },
     "send_mcc": {
       "service": "mdi:send"
+    },
+    "stop_after": {
+      "service": "mdi:timer-stop-outline"
     },
     "wake": {
       "service": "mdi:power-on"

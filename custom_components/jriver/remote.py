@@ -1,136 +1,110 @@
-"""Remote platform for the jriver integration."""
+"""Remote platform for the JRiver Media Center integration."""
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Iterable
 import logging
 from typing import Any
 
-from hamcws import KeyCommand, MediaServer, ViewMode
-import voluptuous as vol
-
 from homeassistant.components.remote import RemoteEntity
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import config_validation as cv, entity_platform
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ServiceValidationError
+from homeassistant.helpers import entity_platform
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
-from homeassistant.helpers.typing import VolDictType
 
-from . import MediaServerUpdateCoordinator
-from .const import DATA_COORDINATOR, DATA_MEDIA_SERVER, DATA_SERVER_NAME, DOMAIN
+from .const import (
+    KIND_REMOTE,
+    SERVICE_ACTIVATE_ZONE,
+    SERVICE_LOAD_DSP_PRESET,
+    SERVICE_SEND_MCC,
+    SERVICE_STOP_AFTER,
+    TurnOffBehaviour,
+)
+from .coordinator import MediaServerUpdateCoordinator
 from .entity import MediaServerEntity, cmd
+from .mcws import MCC, KeyCommand, ViewMode
+from .models import JRiverConfigEntry
+from .services import (
+    MC_ACTIVATE_ZONE_SCHEMA,
+    MC_LOAD_DSP_PRESET_SCHEMA,
+    MC_SEND_MCC_SCHEMA,
+    MC_STOP_AFTER_SCHEMA,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
-
-SERVICE_ACTIVATE_ZONE = "activate_zone"
-
-ATTR_ZONE_NAME = "zone_name"
-
-MC_ACTIVATE_ZONE_SCHEMA: VolDictType = {
-    vol.Required(ATTR_ZONE_NAME): cv.string,
-}
-
-
-SERVICE_SEND_MCC = "send_mcc"
-
-ATTR_MCC_COMMAND = "command"
-ATTR_MCC_PARAMETER = "parameter"
-ATTR_MCC_BLOCK = "block"
-ATTR_ZONE_NAME = "zone_name"
-
-MC_SEND_MCC_SCHEMA: VolDictType = {
-    vol.Required(ATTR_MCC_COMMAND): vol.All(
-        vol.Coerce(int), vol.Range(min=10000, max=40000)
-    ),
-    vol.Optional(ATTR_MCC_PARAMETER): vol.Coerce(int),
-    vol.Optional(ATTR_MCC_BLOCK): cv.boolean,
-    vol.Optional(ATTR_ZONE_NAME): cv.string,
-}
+PARALLEL_UPDATES = 0
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    entry: JRiverConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up the JRiver Media Center remote platform from a config entry."""
+    """Set up the JRiver remote platform."""
     platform = entity_platform.async_get_current_platform()
-
     platform.async_register_entity_service(
         SERVICE_ACTIVATE_ZONE, MC_ACTIVATE_ZONE_SCHEMA, "async_activate_zone"
     )
+    platform.async_register_entity_service(SERVICE_SEND_MCC, MC_SEND_MCC_SCHEMA, "async_send_mcc")
     platform.async_register_entity_service(
-        SERVICE_SEND_MCC, MC_SEND_MCC_SCHEMA, "async_send_mcc"
+        SERVICE_STOP_AFTER, MC_STOP_AFTER_SCHEMA, "async_stop_after"
+    )
+    platform.async_register_entity_service(
+        SERVICE_LOAD_DSP_PRESET, MC_LOAD_DSP_PRESET_SCHEMA, "async_load_dsp_preset"
     )
 
-    data = hass.data[DOMAIN][config_entry.entry_id]
-    ms = data[DATA_MEDIA_SERVER]
-    name = data[DATA_SERVER_NAME]
-
-    unique_id = f"{config_entry.unique_id or config_entry.entry_id}_remote"
-    async_add_entities(
-        [JRiverRemote(data[DATA_COORDINATOR], ms, name, unique_id, hass)]
-    )
+    async_add_entities([JRiverRemote(entry.runtime_data.coordinator, entry)])
 
 
 class JRiverRemote(MediaServerEntity, RemoteEntity):
-    """Control Media Center."""
+    """Control the Media Center user interface."""
 
     _attr_name = None
 
-    def __init__(
-        self,
-        coordinator: MediaServerUpdateCoordinator,
-        media_server: MediaServer,
-        name,
-        uid: str,
-        hass: HomeAssistant,
-    ) -> None:
-        """Initialize the MediaServer entity."""
-        super().__init__(coordinator, uid, name)
-        self._media_server: MediaServer = media_server
-        self._key_command_names = [e.name for e in KeyCommand]
-        self._key_command_values = [e.value for e in KeyCommand]
-        self._hass = hass
+    def __init__(self, coordinator: MediaServerUpdateCoordinator, entry: JRiverConfigEntry) -> None:
+        """Initialise the remote."""
+        super().__init__(coordinator, entry, KIND_REMOTE)
+        self._key_commands = {e.name: e for e in KeyCommand}
+        self._key_values = {e.value: e for e in KeyCommand}
+        self._turn_off_behaviour = entry.runtime_data.turn_off_behaviour
 
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        self._attr_is_on = self.coordinator.data.view_mode > ViewMode.NO_UI
-        self.async_write_ha_state()
+    @property
+    def is_on(self) -> bool:
+        """Return True if a Media Center window is visible."""
+        return self.data.view_mode > ViewMode.NO_UI
 
     @cmd
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Show the standard view."""
-        await self._media_server.send_mcc(22009, param=0, block=True)
+        await self.server.send_mcc(MCC.SET_MODE, param=0, block=True)
 
     @cmd
     async def async_turn_off(self, **kwargs: Any) -> None:
-        """Stop all playback and close the display."""
-        await asyncio.gather(
-            self._media_server.stop_all(),
-            self._media_server.send_mcc(20007, param=0, block=True),
-        )
+        """Stop playback and, if configured, close Media Center."""
+        await self.server.stop_all()
+        if self._turn_off_behaviour == TurnOffBehaviour.CLOSE_PROGRAM:
+            await self.server.send_mcc(MCC.CLOSE_PROGRAM, param=0, block=False)
 
     @cmd
     async def async_send_command(self, command: Iterable[str], **kwargs: Any) -> None:
-        """Send a remote command to the device."""
-        commands_to_send: list[KeyCommand | str] = [
-            KeyCommand[c]
-            if c in self._key_command_names
-            else KeyCommand(c)
-            if c in self._key_command_values
-            else c
-            for c in command
-        ]
-        await self._media_server.send_key_presses(commands_to_send)
+        """Send one or more key presses."""
+        keys: list[KeyCommand | str] = []
+        for value in command:
+            if value in self._key_commands:
+                keys.append(self._key_commands[value])
+            elif value in self._key_values:
+                keys.append(self._key_values[value])
+            else:
+                keys.append(value)
+        await self.server.send_key_presses(keys)
 
     @cmd
-    async def async_activate_zone(self, zone_name: str):
-        """Activate the named zone."""
-        await self._media_server.set_active_zone(zone_name)
+    async def async_activate_zone(self, zone_name: str) -> None:
+        """Make the named zone active."""
+        if zone_name not in self.data.zone_names:
+            raise ServiceValidationError(f"Unknown zone {zone_name}")
+        await self.server.set_active_zone(zone_name)
 
     @cmd
     async def async_send_mcc(
@@ -139,8 +113,29 @@ class JRiverRemote(MediaServerEntity, RemoteEntity):
         parameter: int | None = None,
         block: bool = True,
         zone_name: str | None = None,
-    ):
-        """Send an MCC command."""
-        await self._media_server.send_mcc(
-            command, param=parameter, block=block, zone=zone_name
-        )
+    ) -> None:
+        """Send a raw MCC command."""
+        await self.server.send_mcc(command, param=parameter, block=block, zone=zone_name)
+
+    @cmd
+    async def async_stop_after(
+        self,
+        minutes: int | None = None,
+        tracks: int | None = None,
+        current: bool | None = None,
+    ) -> None:
+        """Schedule playback to stop."""
+        zone = self.data.active_zone
+        if minutes is not None:
+            await self.server.stop_after_delay(minutes, zone=zone)
+        elif tracks is not None:
+            await self.server.send_mcc(MCC.STOP_AFTER_TRACKS, param=tracks, block=True, zone=zone)
+        elif current:
+            await self.server.stop_after_current(zone=zone)
+        else:
+            raise ServiceValidationError("One of minutes, tracks or current must be supplied")
+
+    @cmd
+    async def async_load_dsp_preset(self, preset: str, zone_name: str | None = None) -> None:
+        """Load a DSP preset by name."""
+        await self.server.load_dsp_preset(preset, zone=zone_name)

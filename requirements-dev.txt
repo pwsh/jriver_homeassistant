@@ -1,3 +1,4 @@
-homeassistant
-hamcws
+# homeassistant itself is pulled in by pytest-homeassistant-custom-component
 pytest-homeassistant-custom-component
+pytest-cov
+ruff

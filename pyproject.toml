@@ -1,36 +1,53 @@
 [project]
 name = "jriver_homeassistant"
-version = "0.4.4"
-description = "A custom Home Assistant integration for jriver"
-authors = [
-    { name = "3ll3d00d", email = "mattkhan+jrha@gmail.com" }
-]
-license = "MIT"
+version = "2.0.0"
+description = "A custom Home Assistant integration for JRiver Media Center"
+authors = [{ name = "3ll3d00d", email = "mattkhan+jrha@gmail.com" }]
+license = { text = "MIT" }
 readme = "README.md"
-homepage = "http://github.com/3ll3d00d/jriver_homeassistant"
-repository = "http://github.com/3ll3d00d/jriver_homeassistant"
-requires-python = ">=3.13, <3.14"
-dependencies = [
-    "homeassistant >=2025.4.4",
-    "hamcws",
-    "aioitertools",
-    "wakeonlan >=3.1.0, <4.0.0"
-]
+requires-python = ">=3.13"
+dependencies = []
 
-[tool.poetry]
-include = [
-    "LICENSE",
-]
+[project.urls]
+Homepage = "https://github.com/3ll3d00d/jriver_homeassistant"
+Repository = "https://github.com/3ll3d00d/jriver_homeassistant"
+Issues = "https://github.com/3ll3d00d/jriver_homeassistant/issues"
 
-[tool.poetry.group.dev.dependencies]
-pytest = "*"
-pytest-aiohttp = "*"
-pytest-cov = "*"
-pytest-homeassistant-custom-component = "*"
+[project.optional-dependencies]
+dev = [
+    "pytest-homeassistant-custom-component",
+    "pytest-cov",
+    "ruff",
+]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["custom_components.jriver", "custom_components.jriver.mcws"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC", "W"]
+
+[tool.ruff.lint.per-file-ignores]
+# the vendored client is HA free and takes an explicit timeout by design
+"custom_components/jriver/mcws/*" = ["ASYNC109"]
+# the client tests embed captured MCWS payloads verbatim
+"tests/mcws/*" = ["E501"]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+force-sort-within-sections = true
+known-first-party = ["custom_components", "homeassistant"]
+
+[tool.coverage.run]
+source = ["custom_components/jriver"]

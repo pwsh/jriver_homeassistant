@@ -1,15 +1,9 @@
-"""Support for media browsing."""
+"""Support for browsing the Media Center library."""
+
+from __future__ import annotations
 
 import contextlib
 import logging
-
-from hamcws import (
-    BrowsePath,
-    MediaServer,
-    MediaSubType,
-    MediaType as mc_MediaType,
-    search_for_path,
-)
 
 from homeassistant.components import media_source
 from homeassistant.components.media_player import (
@@ -20,10 +14,23 @@ from homeassistant.components.media_player import (
 )
 from homeassistant.core import HomeAssistant
 
-from . import _translate_to_media_class, _translate_to_media_type
-from .const import MC_FIELD_TO_HA_MEDIACLASS, MC_FIELD_TO_HA_MEDIATYPE
+from .mcws import (
+    BrowsePath,
+    MediaServer,
+    MediaSubType as McMediaSubType,
+    MediaType as McMediaType,
+    search_for_path,
+)
+from .media_types import (
+    MC_FIELD_TO_HA_MEDIACLASS,
+    MC_FIELD_TO_HA_MEDIATYPE,
+    translate_to_media_class,
+    translate_to_media_type,
+)
 
 _LOGGER = logging.getLogger(__name__)
+
+PLAYLIST_ROOTS = ("Playlists", "Playing Now")
 
 
 class UnknownMediaType(BrowseError):
@@ -31,8 +38,7 @@ class UnknownMediaType(BrowseError):
 
 
 def media_source_content_filter(item: BrowseMedia) -> bool:
-    """Content filter for media sources."""
-    # MK media-source
+    """Filter out media sources that Media Center cannot play."""
     return not (
         item.media_content_id.startswith("media-source://camera/")
         and item.media_content_type == "image/png"
@@ -40,26 +46,25 @@ def media_source_content_filter(item: BrowseMedia) -> bool:
 
 
 def _format_item_name(values: dict) -> str:
-    mt = _decode_media_type(values)
-    if mt:
-        if mt == MediaType.EPISODE:
-            return f'{values["Episode"]}: {values["Name"]}'
-        if mt == MediaType.TRACK and "Track #" in values:
-            return f'{values["Track #"]}: {values["Name"]}'
-        if mt == MediaType.MOVIE:
-            if "HDR Format" in values:
-                return f'{values["Name"]} (HDR)'
+    """Build a display name for a library file."""
+    media_type = _decode_media_type(values)
+    if media_type == MediaType.EPISODE and "Episode" in values:
+        return f"{values['Episode']}: {values['Name']}"
+    if media_type == MediaType.TRACK and "Track #" in values:
+        return f"{values['Track #']}: {values['Name']}"
+    if media_type == MediaType.MOVIE and "HDR Format" in values:
+        return f"{values['Name']} (HDR)"
     return values["Name"]
 
 
 def _decode_media_type(item: dict) -> MediaType | str:
-    return _translate_to_media_type(
+    return translate_to_media_type(
         item.get("Media Type", ""), item.get("Media Sub Type", ""), single=True
     )
 
 
 def _decode_media_class(item: dict) -> MediaClass | str:
-    return _translate_to_media_class(
+    return translate_to_media_class(
         item.get("Media Type", ""), item.get("Media Sub Type", ""), single=True
     )
 
@@ -71,76 +76,70 @@ async def browse_nodes(
     parent_content_type: str | None = None,
     parent_id: str = "-1",
 ) -> tuple[BrowseMedia, int]:
-    """Create a BrowseMedia containing the children of the specified base_id."""
+    """Create a BrowseMedia describing the children of the given node."""
     if not parent_id:
         parent_id = "-1"
     parent_media_id = parent_id
-    mt: MediaType | str | None
-    mc: MediaClass | str | None
     container_media_class: MediaClass = MediaClass.DIRECTORY
     container_media_type: MediaType | str = "library"
+    parent_name: str | None = None
+    path_tokens: list[str] = []
 
     if parent_id == "-1":
-        parent_name = None
-        path_tokens = []
+        pass
     elif parent_id.startswith("N|"):
-        _, parent_id, parent_name = parent_id.split("|", 3)
+        _, parent_id, parent_name = parent_id.split("|", 2)
         path_tokens = parent_name.split(" > ")
         if parent_content_type:
             container_media_type = parent_content_type
         browse_path = search_for_path(browse_paths, path_tokens)
         if browse_path:
-            classification = _classify_browse_path(browse_path)
-            if classification:
-                container_media_class = classification[0]
-                container_media_type = str(classification[1])
-        elif path_tokens[0] == "Playlists" or path_tokens[0] == 'Playing Now':
+            if classification := _classify_browse_path(browse_path):
+                container_media_class, container_media_type = classification
+        elif path_tokens and path_tokens[0] in PLAYLIST_ROOTS:
             container_media_class = MediaClass.PLAYLIST
             container_media_type = MediaType.PLAYLIST
     else:
-        raise ValueError(f"Unknown media_content_id format {parent_id}")
+        raise BrowseError(f"Unknown media_content_id format {parent_id}")
 
-    is_child: bool = parent_name is not None
+    is_child = parent_name is not None
 
     nodes = await ms.browse_children(base_id=int(parent_id))
-    items: list[dict[str, str]]
+    items: list[dict] = []
     expandable: bool
     if nodes:
-        items = []
         for name, node_id in nodes.items():
             child_path = [*path_tokens, name]
             if container_media_class == MediaClass.PLAYLIST:
-                mt = container_media_type
-                mc = container_media_class
+                media_type = container_media_type
+                media_class = container_media_class
             else:
                 browse_path = search_for_path(browse_paths, child_path)
                 if not browse_path:
                     continue
-                classification = _classify_browse_path(browse_path)
-                if classification:
-                    mc, mt = classification
+                if classification := _classify_browse_path(browse_path):
+                    media_class, media_type = classification
                 else:
-                    mc = container_media_class
+                    media_class = container_media_class
                     try:
-                        mt = MediaType[container_media_type]
+                        media_type = MediaType[container_media_type]
                     except KeyError:
-                        mt = container_media_type
-            vals = {
-                "id": node_id,
-                "media_id": f"N|{node_id}|{' > '.join(child_path)}",
-                "name": name,
-                "thumbnail": await ms.get_browse_thumbnail_url(node_id),
-                "mt": mt,
-                "mc": mc,
-            }
-            items.append(vals)
+                        media_type = container_media_type
+            items.append(
+                {
+                    "media_id": f"N|{node_id}|{' > '.join(child_path)}",
+                    "name": name,
+                    "thumbnail": await ms.get_browse_thumbnail_url(node_id),
+                    "mt": media_type,
+                    "mc": media_class,
+                }
+            )
         expandable = len(items) > 0
     else:
         files = await ms.browse_files(base_id=int(parent_id))
         items = [
             {
-                "id": file["Key"],
-                "media_id": f'K|{file["Key"]}',
+                "media_id": f"K|{file['Key']}",
                 "name": _format_item_name(file),
                 "thumbnail": await ms.get_file_image_url(int(file["Key"])),
                 "mt": _decode_media_type(file),
@@ -163,55 +162,56 @@ async def browse_nodes(
         for item in items
     ]
     count = len(children)
-    library_info = BrowseMedia(
-        media_class=container_media_class,
-        media_content_id=parent_media_id,
-        media_content_type=container_media_type,
-        title=parent_name if parent_name else "Media Library",
-        can_play=not expandable,
-        can_expand=expandable,
-        children=children,
-    )
-    # add HA provided nodes to the initial browse only
-    if is_child is False:
+
+    # only the root browse offers the Home Assistant media sources
+    if not is_child:
         with contextlib.suppress(BrowseError):
             item = await media_source.async_browse_media(
                 hass, None, content_filter=media_source_content_filter
             )
-            # If domain is None, it's overview of available sources
             if item.domain is None:
                 if item.children:
                     children = [*children, *item.children]
             else:
                 children.append(item)
 
-    return library_info, count
+    return (
+        BrowseMedia(
+            media_class=container_media_class,
+            media_content_id=parent_media_id,
+            media_content_type=container_media_type,
+            title=parent_name if parent_name else "Media Library",
+            can_play=not expandable,
+            can_expand=expandable,
+            children=children,
+        ),
+        count,
+    )
 
 
 def _classify_browse_path(path: BrowsePath) -> tuple[MediaClass, MediaType] | None:
+    """Work out the HA media class/type pair for a browse path."""
+
     def _translate(
-        mc_mt: mc_MediaType, mc_mst: MediaSubType | None
+        media_type: McMediaType, media_sub_type: McMediaSubType | None
     ) -> tuple[MediaClass, MediaType] | None:
-        mt: MediaType | str = _translate_to_media_type(mc_mt, mc_mst)
-        mc: MediaClass | str = _translate_to_media_class(mc_mt, mc_mst)
+        mt = translate_to_media_type(media_type, media_sub_type)
+        mc = translate_to_media_class(media_type, media_sub_type)
         if isinstance(mt, MediaType) and isinstance(mc, MediaClass):
             return mc, mt
         return None
 
-    mt = MC_FIELD_TO_HA_MEDIATYPE.get(path.name, None)
-    mc = MC_FIELD_TO_HA_MEDIACLASS.get(path.name, None)
-    if mt and mc:
-        return MediaClass[mc], MediaType[mt]
+    mt_name = MC_FIELD_TO_HA_MEDIATYPE.get(path.name)
+    mc_name = MC_FIELD_TO_HA_MEDIACLASS.get(path.name)
+    if mt_name and mc_name:
+        return MediaClass[mc_name], MediaType[mt_name]
 
-    for mc_mt in path.effective_media_types:
+    for media_type in path.effective_media_types:
         if path.effective_media_sub_types:
-            for mst in path.effective_media_sub_types:
-                vals = _translate(mc_mt, mst)
-                if vals:
-                    return vals
-        else:
-            vals = _translate(mc_mt, None)
-            if vals:
-                return vals
+            for media_sub_type in path.effective_media_sub_types:
+                if values := _translate(media_type, media_sub_type):
+                    return values
+        elif values := _translate(media_type, None):
+            return values
 
     return None

@@ -4,7 +4,10 @@
       "already_configured": "O dispositivo já está configurado",
       "cannot_connect": "Falha ao ligar",
       "invalid_auth": "Autenticação inválida",
-      "unknown": "Erro inesperado"
+      "reauth_successful": "A reautenticação foi bem-sucedida",
+      "reconfigure_successful": "A reconfiguração foi bem-sucedida",
+      "unknown": "Erro inesperado",
+      "wrong_server": "O servidor neste endereço não é aquele para o qual esta entrada foi configurada."
     },
     "error": {
       "cannot_connect": "Falha ao ligar",
@@ -39,6 +42,24 @@
         },
         "description": "Selecione as visualizações remotas que deseja poder navegar no Home Assistant. Estas podem ser encontradas na configuração \"Personalizar visualizações para JRemote, Gizmo e Painel\" em Opções > Rede de Mídia > Avançado. Atualize para MC32 para remover a necessidade de fornecer esta informação manualmente."
       },
+      "reauth_confirm": {
+        "data": {
+          "password": "Password",
+          "username": "Username"
+        },
+        "description": "O Media Center rejeitou as credenciais guardadas. Introduza o nome de utilizador e a palavra-passe de Opções > Rede de Mídia > Autenticação.",
+        "title": "Reautenticar {name}"
+      },
+      "reconfigure": {
+        "data": {
+          "api_key": "API key",
+          "host": "Host",
+          "name": "Name",
+          "port": "Port",
+          "ssl": "Uses an SSL certificate"
+        },
+        "description": "Atualize o endereço onde o Media Center pode ser contactado."
+      },
       "select_playback_fields": {
         "data": {
           "extra_fields": "Nome do Campo"
@@ -47,7 +68,7 @@
       },
       "select_zones": {
         "data": {
-          "zone_names": "Zonas"
+          "device_zones": "Zonas"
         },
         "description": "Escolha as zonas que deseja expor como dispositivo."
       },
@@ -62,7 +83,9 @@
         "data_description": {
           "api_key": "A chave de acesso mostrada em Opções > Rede de Mídia.",
           "host": "O nome do host ou endereço IP do sistema que hospeda o seu JRiver Media Server.",
-          "name": "Um nome memorável para o servidor, será predefinido para o nome do host se descoberto através de uma chave de acesso"
+          "name": "Um nome memorável para o servidor, será predefinido para o nome do host se descoberto através de uma chave de acesso",
+          "port": "The Media Network port, 52199 by default.",
+          "ssl": "Connect over HTTPS rather than HTTP."
         },
         "description": "Introduza uma chave de acesso ou host e porta.\n\"Usar Rede de Mídia para partilhar esta biblioteca e ativar DLNA\" deve estar ativado em Opções > Rede de Mídia."
       },
@@ -74,13 +97,67 @@
       }
     }
   },
-  "options": {
-    "abort": {
-      "already_configured": "O dispositivo já está configurado",
-      "cannot_connect": "Falha ao ligar",
-      "invalid_auth": "Autenticação inválida",
-      "unknown": "Erro inesperado"
+  "entity": {
+    "binary_sensor": {
+      "audio_direct": {
+        "name": "Áudio direto"
+      }
     },
+    "sensor": {
+      "active_zone": {
+        "name": "Zona ativa"
+      },
+      "playing_now": {
+        "name": "A reproduzir agora"
+      },
+      "playlist": {
+        "name": "Lista de reprodução atual"
+      },
+      "ui_mode": {
+        "name": "Modo da interface",
+        "state": {
+          "count": "Count",
+          "cover": "Cover",
+          "display": "Display",
+          "mini": "Mini",
+          "no_ui": "No user interface",
+          "standard": "Standard",
+          "theater": "Theater",
+          "unknown": "Unknown"
+        }
+      },
+      "version": {
+        "name": "Versão"
+      }
+    }
+  },
+  "exceptions": {
+    "auth_failed": {
+      "message": "Media Center rejected the credentials while running {action}."
+    },
+    "command_failed": {
+      "message": "{action} failed: {error}"
+    },
+    "entry_not_loaded": {
+      "message": "The JRiver Media Center entry for {entity_id} is not loaded."
+    },
+    "no_mac_addresses": {
+      "message": "No MAC addresses are configured, add them in the integration options."
+    },
+    "no_wake_target": {
+      "message": "No JRiver Media Center entity or device was supplied."
+    },
+    "unknown_entity": {
+      "message": "{entity_id} is not a JRiver Media Center entity."
+    },
+    "unsupported": {
+      "message": "This version of Media Center does not support {action}."
+    },
+    "wol_unavailable": {
+      "message": "The Wake on LAN integration is not set up."
+    }
+  },
+  "options": {
     "error": {
       "cannot_connect": "Falha ao ligar",
       "invalid_access_key": "Não é possível resolver a Chave de Acesso",
@@ -89,6 +166,7 @@
       "invalid_paths": "Formato do caminho está incorreto.",
       "no_mac_addresses": "Deve fornecer pelo menos um endereço MAC ou desativar o suporte a WOL.",
       "no_paths": "Nenhum caminho de visualização fornecido",
+      "no_zones": "Deve selecionar pelo menos uma zona.",
       "timeout_connect": "Tempo limite ao estabelecer ligação",
       "unknown": "Erro inesperado"
     },
@@ -101,9 +179,16 @@
       },
       "init": {
         "data": {
-          "browse_paths": "Caminhos de Visualização"
+          "dsp_presets": "Predefinições de DSP",
+          "poll_interval": "Intervalo de consulta",
+          "turn_off_behaviour": "Comportamento ao desligar"
         },
-        "description": "Selecione as visualizações remotas que deseja poder navegar no Home Assistant. Estas podem ser encontradas na configuração \"Personalizar visualizações para JRemote, Gizmo e Painel\" em Opções > Rede de Mídia > Avançado. Atualize para MC32 para remover a necessidade de fornecer esta informação manualmente."
+        "data_description": {
+          "dsp_presets": "Names of the DSP presets to expose as sound modes.",
+          "poll_interval": "Seconds between updates while something is playing. Idle zones are polled three times less often.",
+          "turn_off_behaviour": "What media_player.turn_off and remote.turn_off should do. Closing Media Center can hang the process on Linux."
+        },
+        "description": "Ajuste a frequência de consulta do Media Center e o comportamento dos controlos de energia."
       },
       "macs": {
         "data": {
@@ -111,6 +196,34 @@
           "use_wol": "Ativar o serviço remote.wake."
         },
         "description": "Selecione os endereços MAC que devem ser utilizados para o Wake on LAN.\nRequer a integração Wake on LAN do Home Assistant."
+      },
+      "paths": {
+        "data": {
+          "browse_paths": "View paths"
+        },
+        "description": "Select the remote views that you want to browse in Home Assistant. These can be found in the \"Customize views for JRemote, Gizmo and Panel\" configuration in Options > Media Network > Advanced. Upgrade to MC32 to remove the need to provide this information manually."
+      },
+      "zones": {
+        "data": {
+          "device_zones": "Zonas",
+          "per_zone": "Mostrar zonas como dispositivos separados"
+        },
+        "description": "Escolha se deseja expor as zonas como dispositivos separados e quais incluir."
+      }
+    }
+  },
+  "selector": {
+    "play_mode": {
+      "options": {
+        "add": "Acrescentar à lista de reprodução atual",
+        "next": "Reproduzir a seguir",
+        "replace": "Substituir a lista de reprodução atual"
+      }
+    },
+    "turn_off_behaviour": {
+      "options": {
+        "close_program": "Parar a reprodução e fechar o Media Center",
+        "stop": "Parar a reprodução"
       }
     }
   },
@@ -125,19 +238,15 @@
       },
       "name": "Definir Zona Ativa"
     },
-    "add_to_playlist": {
-      "description": "Adiciona itens da biblioteca à lista de reprodução atual. Deve fornecer uma consulta ou uma lista de reprodução.",
+    "adjust_volume": {
+      "description": "Altera o volume para cima ou para baixo por um valor especificado.",
       "fields": {
-        "playlist_path": {
-          "description": "Um caminho para uma lista de reprodução a ser reproduzida.",
-          "name": "Caminho da Lista de Reprodução"
-        },
-        "query": {
-          "description": "Uma expressão de pesquisa JRiver conforme https://wiki.jriver.com/index.php/Search_Language",
-          "name": "Consulta de Pesquisa"
+        "delta": {
+          "description": "Quantidade (%) para alterar o volume.",
+          "name": "Ajuste de volume"
         }
       },
-      "name": "Adicionar à lista de reprodução"
+      "name": "Ajuste relativo do volume"
     },
     "append_search_results_to_playlist": {
       "description": "Adiciona itens da biblioteca à lista de reprodução atual..",
@@ -149,6 +258,30 @@
       },
       "name": "Adicionar pesquisa à lista de reprodução"
     },
+    "get_playlist": {
+      "description": "Devolve o conteúdo da lista de reprodução atual da zona selecionada.",
+      "fields": {
+        "entity_id": {
+          "description": "The JRiver media player whose zone should be read.",
+          "name": "Entity"
+        }
+      },
+      "name": "Obter a lista de reprodução atual"
+    },
+    "load_dsp_preset": {
+      "description": "Carrega uma predefinição de DSP pelo nome.",
+      "fields": {
+        "preset": {
+          "description": "The name of the DSP preset.",
+          "name": "Preset"
+        },
+        "zone_name": {
+          "description": "A Media Center zone.",
+          "name": "Target zone name"
+        }
+      },
+      "name": "Carregar predefinição de DSP"
+    },
     "play_playlist": {
       "description": "Reproduz uma lista de reprodução nomeada.",
       "fields": {
@@ -159,15 +292,41 @@
       },
       "name": "Reproduz uma lista de reprodução."
     },
-    "adjust_volume": {
-      "description": "Altera o volume para cima ou para baixo por um valor especificado.",
+    "play_search": {
+      "description": "Reproduz os resultados de uma pesquisa na biblioteca.",
       "fields": {
-        "delta": {
-          "description": "Quantidade (%) para alterar o volume.",
-          "name": "Ajuste de volume"
+        "play_mode": {
+          "description": "Whether to replace the playing now list, append to it or play next.",
+          "name": "Play mode"
+        },
+        "query": {
+          "description": "A JRiver search expression as per https://wiki.jriver.com/index.php/Search_Language",
+          "name": "Search query"
         }
       },
-      "name": "Ajuste relativo do volume"
+      "name": "Reproduzir resultados da pesquisa"
+    },
+    "search": {
+      "description": "Executa uma pesquisa na biblioteca e devolve os ficheiros correspondentes.",
+      "fields": {
+        "entity_id": {
+          "description": "A JRiver media player belonging to the server to search.",
+          "name": "Entity"
+        },
+        "fields": {
+          "description": "The library fields to return for each match.",
+          "name": "Fields"
+        },
+        "limit": {
+          "description": "The maximum number of results to return.",
+          "name": "Limit"
+        },
+        "query": {
+          "description": "A JRiver search expression as per https://wiki.jriver.com/index.php/Search_Language",
+          "name": "Search query"
+        }
+      },
+      "name": "Pesquisar na biblioteca"
     },
     "seek_relative": {
       "description": "Avança ou retrocede pela quantidade especificada em segundos.",
@@ -201,9 +360,31 @@
       },
       "name": "Enviar comando MCC"
     },
+    "stop_after": {
+      "description": "Agenda a paragem da reprodução após um atraso, um número de faixas ou o ficheiro atual.",
+      "fields": {
+        "current": {
+          "description": "Stop playback at the end of the current file.",
+          "name": "Current file"
+        },
+        "minutes": {
+          "description": "Stop playback after this many minutes.",
+          "name": "Minutes"
+        },
+        "tracks": {
+          "description": "Stop playback after this many tracks.",
+          "name": "Tracks"
+        }
+      },
+      "name": "Parar depois de"
+    },
     "wake": {
       "description": "Envia um pacote mágico WOL.",
       "fields": {
+        "device_id": {
+          "description": "A JRiver device belonging to the server to wake.",
+          "name": "Device"
+        },
         "entity_id": {
           "description": "o servidor de mídia alvo",
           "name": "ID da entidade"

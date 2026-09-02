@@ -1,215 +1,396 @@
 {
-    "config": {
-        "abort": {
-            "already_configured": "Device is already configured",
-            "cannot_connect": "Failed to connect",
-            "invalid_auth": "Invalid authentication",
-            "unknown": "Unexpected error"
-        },
-        "error": {
-            "cannot_connect": "Failed to connect",
-            "invalid_access_key": "Unable to resolve Access Key",
-            "invalid_auth": "Invalid authentication",
-            "invalid_mac": "Invalid MAC address, must be 6 pairs of hex digits separated by :",
-            "invalid_paths": "Path format is incorrect.",
-            "no_mac_addresses": "Must provide at least one MAC address or disable WOL support.",
-            "no_paths": "No view paths provided",
-            "no_zones": "Must select at least one zone.",
-            "timeout_connect": "Timeout establishing connection",
-            "unknown": "Unexpected error"
-        },
-        "step": {
-            "credentials": {
-                "data": {
-                    "password": "Password",
-                    "username": "Username"
-                },
-                "description": "Please enter your JRiver Media Server user name and password. These can be found in Options > Media Network > Authentication"
-            },
-            "macs": {
-                "data": {
-                    "mac": "MAC address",
-                    "use_wol": "Configure remote.wake service? (requires at least 1 MAC address)"
-                },
-                "description": "Select the MAC addresses that should be used for wake on lan.\nRequires the Home Assistant Wake on LAN integration to be enabled."
-            },
-            "paths": {
-                "data": {
-                    "browse_paths": "View Paths"
-                },
-                "description": "Please select the remote views that you want to be able to browse in Home Assistant. These can be found in the \"Customize views for JRemote, Gizmo and Panel\" configuration in Options > Media Network > Advanced. Upgrade to MC32 to remove the need to provide this information manually."
-            },
-            "select_playback_fields": {
-                "data": {
-                    "extra_fields": "Field Name"
-                },
-                "description": "Specify additional library fields to expose as attributes on the playing now sensor(s)."
-            },
-            "select_zones": {
-                "data": {
-                    "zone_names": "Zones"
-                },
-                "description": "Choose which zones to expose as a device."
-            },
-            "user": {
-                "data": {
-                    "api_key": "API key",
-                    "host": "Host",
-                    "name": "Name",
-                    "port": "Port",
-                    "ssl": "Uses an SSL certificate"
-                },
-                "data_description": {
-                    "api_key": "The access key shown in Options > Media Network.",
-                    "host": "The hostname or IP address of the system hosting your JRiver Media Server.",
-                    "name": "A memorable name for the server, will default to the hostname if discovered via an access key"
-                },
-                "description": "Enter an access key or host and port.\n\"Use Media Network to share this library and enable DLNA\" must be enabled in Options > Media Network."
-            },
-            "zones": {
-                "data": {
-                    "per_zone": "Show zones as separate devices"
-                },
-                "description": "Choose whether to expose zones as separate devices."
-            }
-        }
+  "config": {
+    "abort": {
+      "already_configured": "Device is already configured",
+      "cannot_connect": "Failed to connect",
+      "invalid_auth": "Invalid authentication",
+      "reauth_successful": "Re-authentication was successful",
+      "reconfigure_successful": "Re-configuration was successful",
+      "unknown": "Unexpected error",
+      "wrong_server": "The server at this address is not the one this entry was set up for."
     },
-    "options": {
-        "abort": {
-            "already_configured": "Device is already configured",
-            "cannot_connect": "Failed to connect",
-            "invalid_auth": "Invalid authentication",
-            "unknown": "Unexpected error"
-        },
-        "error": {
-            "cannot_connect": "Failed to connect",
-            "invalid_access_key": "Unable to resolve Access Key",
-            "invalid_auth": "Invalid authentication",
-            "invalid_mac": "Invalid MAC address, must be 6 pairs of hex digits separated by :",
-            "invalid_paths": "Path format is incorrect.",
-            "no_mac_addresses": "Must provide at least one MAC address or disable WOL support.",
-            "no_paths": "No view paths provided",
-            "timeout_connect": "Timeout establishing connection",
-            "unknown": "Unexpected error"
-        },
-        "step": {
-            "fields": {
-                "data": {
-                    "extra_fields": "Field Name"
-                },
-                "description": "Specify additional library fields to expose as attributes on the playing now sensor(s)."
-            },
-            "init": {
-                "data": {
-                    "browse_paths": "View Paths"
-                },
-                "description": "Please select the remote views that you want to be able to browse in Home Assistant. These can be found in the \"Customize views for JRemote, Gizmo and Panel\" configuration in Options > Media Network > Advanced. Upgrade to MC32 to remove the need to provide this information manually."
-            },
-            "macs": {
-                "data": {
-                    "mac": "MAC address",
-                    "use_wol": "Enable remote.wake service."
-                },
-                "description": "Select the MAC addresses that should be used for wake on lan.\nRequires the Home Assistant Wake on LAN integration to be enabled."
-            }
-        }
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "invalid_access_key": "Unable to resolve access key",
+      "invalid_auth": "Invalid authentication",
+      "invalid_mac": "Invalid MAC address, must be 6 pairs of hex digits separated by :",
+      "invalid_paths": "Path format is incorrect.",
+      "no_mac_addresses": "Must provide at least one MAC address or disable wake on LAN support.",
+      "no_paths": "No view paths provided",
+      "no_zones": "Must select at least one zone.",
+      "timeout_connect": "Timeout establishing connection",
+      "unknown": "Unexpected error"
     },
-    "services": {
-        "activate_zone": {
-            "description": "Sets the active zone.",
-            "fields": {
-                "zone_name": {
-                    "description": "A JRiver zone name",
-                    "name": "Zone Name"
-                }
-            },
-            "name": "Set Active Zone"
+    "step": {
+      "credentials": {
+        "data": {
+          "password": "Password",
+          "username": "Username"
         },
-        "add_to_playlist": {
-            "description": "Adds library items to the Playing Now playlist. Must provide either a query or a playlist.",
-            "fields": {
-                "playlist_path": {
-                    "description": "A path to a playlist to play.",
-                    "name": "Playlist Path"
-                },
-                "query": {
-                    "description": "A JRiver search expression as per https://wiki.jriver.com/index.php/Search_Language",
-                    "name": "Search Query"
-                }
-            },
-            "name": "Add to playlist"
+        "description": "Enter your JRiver Media Center user name and password. These can be found in Options > Media Network > Authentication."
+      },
+      "macs": {
+        "data": {
+          "mac": "MAC address",
+          "use_wol": "Configure the jriver.wake action? (requires at least 1 MAC address)"
         },
-        "adjust_volume": {
-            "description": "Change volume up or down by a given amount.",
-            "fields": {
-                "delta": {
-                    "description": "Amount (%age) to change volume by.",
-                    "name": "Volume adjustment"
-                }
-            },
-            "name": "Relative volume adjustment"
+        "description": "Select the MAC addresses that should be used for wake on LAN.\nRequires the Home Assistant Wake on LAN integration to be enabled."
+      },
+      "paths": {
+        "data": {
+          "browse_paths": "View paths"
         },
-        "append_search_results_to_playlist": {
-            "description": "Adds library items to the Playing Now playlist. Must provide either a search query.",
-            "fields": {
-                "query": {
-                    "description": "A JRiver search expression as per https://wiki.jriver.com/index.php/Search_Language",
-                    "name": "Search Query"
-                }
-            },
-            "name": "Append Search to playlist"
+        "description": "Select the remote views that you want to browse in Home Assistant. These can be found in the \"Customize views for JRemote, Gizmo and Panel\" configuration in Options > Media Network > Advanced. Upgrade to MC32 to remove the need to provide this information manually."
+      },
+      "reauth_confirm": {
+        "data": {
+          "password": "Password",
+          "username": "Username"
         },
-        "play_playlist": {
-            "description": "Plays a named playlist.",
-            "fields": {
-                "playlist_path": {
-                    "description": "The playlist to play.",
-                    "name": "Playlist Path"
-                }
-            },
-            "name": "Plays a playlist"
+        "description": "Media Center rejected the stored credentials. Enter the user name and password from Options > Media Network > Authentication.",
+        "title": "Reauthenticate {name}"
+      },
+      "reconfigure": {
+        "data": {
+          "api_key": "API key",
+          "host": "Host",
+          "name": "Name",
+          "port": "Port",
+          "ssl": "Uses an SSL certificate"
         },
-        "seek_relative": {
-            "description": "Move forward or backward by the specified amount in seconds.",
-            "fields": {
-                "seek_duration": {
-                    "description": "Number of seconds to seek forwards or backwards.",
-                    "name": "Seek amount"
-                }
-            },
-            "name": "Relative position seek"
+        "description": "Update where Media Center can be reached."
+      },
+      "select_playback_fields": {
+        "data": {
+          "extra_fields": "Field name"
         },
-        "send_mcc": {
-            "description": "Sends an MCC command.",
-            "fields": {
-                "block": {
-                    "description": "true to block, false to return immediately",
-                    "name": "Controls whether the call is blocking"
-                },
-                "command": {
-                    "description": "An MCC command",
-                    "name": "MCC command id"
-                },
-                "parameter": {
-                    "description": "Optional parameter",
-                    "name": "Parameter to an MCC command"
-                },
-                "zone_name": {
-                    "description": "A Media Server zone",
-                    "name": "Target zone name"
-                }
-            },
-            "name": "Send MCC command"
+        "description": "Specify additional library fields to expose as attributes on the playing now sensors."
+      },
+      "select_zones": {
+        "data": {
+          "device_zones": "Zones"
         },
-        "wake": {
-            "description": "Sends a WOL magic packet.",
-            "fields": {
-                "entity_id": {
-                    "description": "the target media server",
-                    "name": "entity id"
-                }
-            },
-            "name": "Use Wake On Lan to wake the MediaServer"
-        }
+        "description": "Choose which zones to expose as a device."
+      },
+      "user": {
+        "data": {
+          "api_key": "API key",
+          "host": "Host",
+          "name": "Name",
+          "port": "Port",
+          "ssl": "Uses an SSL certificate"
+        },
+        "data_description": {
+          "api_key": "The access key shown in Options > Media Network.",
+          "host": "The hostname or IP address of the system hosting your JRiver Media Center.",
+          "name": "A memorable name for the server, defaults to the name reported by Media Center.",
+          "port": "The Media Network port, 52199 by default.",
+          "ssl": "Connect over HTTPS rather than HTTP."
+        },
+        "description": "Enter an access key or host and port.\n\"Use Media Network to share this library and enable DLNA\" must be enabled in Options > Media Network."
+      },
+      "zones": {
+        "data": {
+          "per_zone": "Show zones as separate devices"
+        },
+        "description": "Choose whether to expose zones as separate devices."
+      }
     }
+  },
+  "entity": {
+    "binary_sensor": {
+      "audio_direct": {
+        "name": "Audio direct"
+      }
+    },
+    "sensor": {
+      "active_zone": {
+        "name": "Active zone"
+      },
+      "playing_now": {
+        "name": "Playing now"
+      },
+      "playlist": {
+        "name": "Playing now list"
+      },
+      "ui_mode": {
+        "name": "UI mode",
+        "state": {
+          "count": "Count",
+          "cover": "Cover",
+          "display": "Display",
+          "mini": "Mini",
+          "no_ui": "No user interface",
+          "standard": "Standard",
+          "theater": "Theater",
+          "unknown": "Unknown"
+        }
+      },
+      "version": {
+        "name": "Version"
+      }
+    }
+  },
+  "exceptions": {
+    "auth_failed": {
+      "message": "Media Center rejected the credentials while running {action}."
+    },
+    "command_failed": {
+      "message": "{action} failed: {error}"
+    },
+    "entry_not_loaded": {
+      "message": "The JRiver Media Center entry for {entity_id} is not loaded."
+    },
+    "no_mac_addresses": {
+      "message": "No MAC addresses are configured, add them in the integration options."
+    },
+    "no_wake_target": {
+      "message": "No JRiver Media Center entity or device was supplied."
+    },
+    "unknown_entity": {
+      "message": "{entity_id} is not a JRiver Media Center entity."
+    },
+    "unsupported": {
+      "message": "This version of Media Center does not support {action}."
+    },
+    "wol_unavailable": {
+      "message": "The Wake on LAN integration is not set up."
+    }
+  },
+  "options": {
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "invalid_access_key": "Unable to resolve access key",
+      "invalid_auth": "Invalid authentication",
+      "invalid_mac": "Invalid MAC address, must be 6 pairs of hex digits separated by :",
+      "invalid_paths": "Path format is incorrect.",
+      "no_mac_addresses": "Must provide at least one MAC address or disable wake on LAN support.",
+      "no_paths": "No view paths provided",
+      "no_zones": "Must select at least one zone.",
+      "timeout_connect": "Timeout establishing connection",
+      "unknown": "Unexpected error"
+    },
+    "step": {
+      "fields": {
+        "data": {
+          "extra_fields": "Field name"
+        },
+        "description": "Specify additional library fields to expose as attributes on the playing now sensors."
+      },
+      "init": {
+        "data": {
+          "dsp_presets": "DSP presets",
+          "poll_interval": "Poll interval",
+          "turn_off_behaviour": "Turn off behaviour"
+        },
+        "data_description": {
+          "dsp_presets": "Names of the DSP presets to expose as sound modes.",
+          "poll_interval": "Seconds between updates while something is playing. Idle zones are polled three times less often.",
+          "turn_off_behaviour": "What media_player.turn_off and remote.turn_off should do. Closing Media Center can hang the process on Linux."
+        },
+        "description": "Tune how often Media Center is polled and how the power controls behave."
+      },
+      "macs": {
+        "data": {
+          "mac": "MAC address",
+          "use_wol": "Enable the jriver.wake action."
+        },
+        "description": "Select the MAC addresses that should be used for wake on LAN.\nRequires the Home Assistant Wake on LAN integration to be enabled."
+      },
+      "paths": {
+        "data": {
+          "browse_paths": "View paths"
+        },
+        "description": "Select the remote views that you want to browse in Home Assistant. These can be found in the \"Customize views for JRemote, Gizmo and Panel\" configuration in Options > Media Network > Advanced. Upgrade to MC32 to remove the need to provide this information manually."
+      },
+      "zones": {
+        "data": {
+          "device_zones": "Zones",
+          "per_zone": "Show zones as separate devices"
+        },
+        "description": "Choose whether to expose zones as separate devices and which zones to include."
+      }
+    }
+  },
+  "selector": {
+    "play_mode": {
+      "options": {
+        "add": "Append to the playing now list",
+        "next": "Play next",
+        "replace": "Replace the playing now list"
+      }
+    },
+    "turn_off_behaviour": {
+      "options": {
+        "close_program": "Stop playback and close Media Center",
+        "stop": "Stop playback"
+      }
+    }
+  },
+  "services": {
+    "activate_zone": {
+      "description": "Sets the active zone.",
+      "fields": {
+        "zone_name": {
+          "description": "A JRiver zone name.",
+          "name": "Zone name"
+        }
+      },
+      "name": "Set active zone"
+    },
+    "adjust_volume": {
+      "description": "Changes the volume up or down by a given amount.",
+      "fields": {
+        "delta": {
+          "description": "Percentage to change the volume by.",
+          "name": "Volume adjustment"
+        }
+      },
+      "name": "Relative volume adjustment"
+    },
+    "append_search_results_to_playlist": {
+      "description": "Adds the results of a library search to the end of the playing now list.",
+      "fields": {
+        "query": {
+          "description": "A JRiver search expression as per https://wiki.jriver.com/index.php/Search_Language",
+          "name": "Search query"
+        }
+      },
+      "name": "Append search results to the playing now list"
+    },
+    "get_playlist": {
+      "description": "Returns the contents of the playing now list for the targeted zone.",
+      "fields": {
+        "entity_id": {
+          "description": "The JRiver media player whose zone should be read.",
+          "name": "Entity"
+        }
+      },
+      "name": "Get the playing now list"
+    },
+    "load_dsp_preset": {
+      "description": "Loads a DSP preset by name.",
+      "fields": {
+        "preset": {
+          "description": "The name of the DSP preset.",
+          "name": "Preset"
+        },
+        "zone_name": {
+          "description": "A Media Center zone.",
+          "name": "Target zone name"
+        }
+      },
+      "name": "Load DSP preset"
+    },
+    "play_playlist": {
+      "description": "Plays a stored playlist.",
+      "fields": {
+        "playlist_path": {
+          "description": "The path of the playlist to play.",
+          "name": "Playlist path"
+        }
+      },
+      "name": "Play a playlist"
+    },
+    "play_search": {
+      "description": "Plays the results of a library search.",
+      "fields": {
+        "play_mode": {
+          "description": "Whether to replace the playing now list, append to it or play next.",
+          "name": "Play mode"
+        },
+        "query": {
+          "description": "A JRiver search expression as per https://wiki.jriver.com/index.php/Search_Language",
+          "name": "Search query"
+        }
+      },
+      "name": "Play search results"
+    },
+    "search": {
+      "description": "Runs a library search and returns the matching files.",
+      "fields": {
+        "entity_id": {
+          "description": "A JRiver media player belonging to the server to search.",
+          "name": "Entity"
+        },
+        "fields": {
+          "description": "The library fields to return for each match.",
+          "name": "Fields"
+        },
+        "limit": {
+          "description": "The maximum number of results to return.",
+          "name": "Limit"
+        },
+        "query": {
+          "description": "A JRiver search expression as per https://wiki.jriver.com/index.php/Search_Language",
+          "name": "Search query"
+        }
+      },
+      "name": "Search the library"
+    },
+    "seek_relative": {
+      "description": "Moves forward or backward by the specified number of seconds.",
+      "fields": {
+        "seek_duration": {
+          "description": "Number of seconds to seek forwards or backwards.",
+          "name": "Seek amount"
+        }
+      },
+      "name": "Relative position seek"
+    },
+    "send_mcc": {
+      "description": "Sends a Media Center Core Command.",
+      "fields": {
+        "block": {
+          "description": "True to wait for the command to complete, false to return immediately.",
+          "name": "Block"
+        },
+        "command": {
+          "description": "The numeric MCC command.",
+          "name": "MCC command id"
+        },
+        "parameter": {
+          "description": "Optional parameter for the command.",
+          "name": "Parameter"
+        },
+        "zone_name": {
+          "description": "A Media Center zone.",
+          "name": "Target zone name"
+        }
+      },
+      "name": "Send MCC command"
+    },
+    "stop_after": {
+      "description": "Schedules playback to stop after a delay, a number of tracks or the current file.",
+      "fields": {
+        "current": {
+          "description": "Stop playback at the end of the current file.",
+          "name": "Current file"
+        },
+        "minutes": {
+          "description": "Stop playback after this many minutes.",
+          "name": "Minutes"
+        },
+        "tracks": {
+          "description": "Stop playback after this many tracks.",
+          "name": "Tracks"
+        }
+      },
+      "name": "Stop after"
+    },
+    "wake": {
+      "description": "Sends a wake on LAN magic packet to the configured MAC addresses.",
+      "fields": {
+        "device_id": {
+          "description": "A JRiver device belonging to the server to wake.",
+          "name": "Device"
+        },
+        "entity_id": {
+          "description": "A JRiver entity belonging to the server to wake.",
+          "name": "Entity"
+        }
+      },
+      "name": "Wake the media server"
+    }
+  }
 }
