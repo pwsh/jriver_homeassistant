@@ -143,7 +143,9 @@ play media, browse media, clear playlist, shuffle, repeat, turn on, turn off, pl
 `select_source` (single device mode), `grouping` (per zone mode) and `select_sound_mode`
 (when DSP presets are configured).
 
-Extra attributes: `zone_name`, `zone_id`, `linked_zones`, `playing_now_position`,
+Extra attributes: `zone_name`, `zone_id`, `linked_zones` (the *names* of the zones this one is
+linked to, as reported by Media Center; `group_members` holds the matching entity ids),
+`playing_now_position`,
 `playing_now_tracks`, `next_file_key`, `live_input`, `audio_direct`, `audio_path`, and
 `bitrate` / `sample_rate` / `bitdepth` / `channels` when Media Center reports them.
 
@@ -386,6 +388,10 @@ response_variable: matches
   for the full list.
 - Disabling a zone's device in Home Assistant does not stop polling for it; remove the zone from
   the options instead.
+- `Playback/Info` reports `LinkedZones` as zone names, so `group_members` cannot resolve a linked
+  zone whose name is duplicated or that is not in the configured zone list.
+- Media Center keeps reporting the previous track's duration for a zone that has nothing loaded.
+  The integration reports no media at all for such a zone rather than a stale duration.
 
 ## Removing the integration
 

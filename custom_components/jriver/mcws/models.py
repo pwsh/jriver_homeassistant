@@ -266,9 +266,12 @@ class PlaybackInfo:
         self.position_ms: int = _as_int(resp_info.get("PositionMS"), 0)
         self.duration_ms: int = _as_int(resp_info.get("DurationMS"), 0)
         self.elapsed_time_display: str = resp_info.get("ElapsedTimeDisplay") or ""
+        self.remaining_time_display: str = resp_info.get("RemainingTimeDisplay") or ""
         self.total_time_display: str = resp_info.get("TotalTimeDisplay") or ""
+        self.position_display: str = resp_info.get("PositionDisplay") or ""
         self.playing_now_position: int = _as_int(resp_info.get("PlayingNowPosition"), -1)
         self.playing_now_tracks: int = _as_int(resp_info.get("PlayingNowTracks"), 0)
+        self.playing_now_position_display: str = resp_info.get("PlayingNowPositionDisplay") or ""
         self.playing_now_change_counter: int = _as_int(resp_info.get("PlayingNowChangeCounter"), 0)
         self.bitrate: int = _as_int(resp_info.get("Bitrate"), 0)
         self.bitdepth: int = _as_int(resp_info.get("Bitdepth"), 0)
@@ -278,17 +281,17 @@ class PlaybackInfo:
         self.volume: float = _as_float(resp_info.get("Volume"), 0.0)
         self.volume_display: str = resp_info.get("VolumeDisplay") or ""
         self.muted: bool = self.volume_display == "Muted"
+        self.lip_sync_adjustment_ms: int = _as_int(resp_info.get("LipSyncAdjustmentMS"), 0)
+        self.rating: str = resp_info.get("Rating") or ""
         self.image_url: str = resp_info.get("ImageURL") or ""
         self.name: str = resp_info.get("Name") or ""
         self.live_input: bool = self.name == "Ipc"
-        self.linked_zones: list[int] = [
-            zone_id
-            for zone_id in (
-                _as_int(token, -1)
-                for token in (resp_info.get("LinkedZones") or "").split(",")
-                if token.strip()
-            )
-            if zone_id != -1
+        # LinkedZones is a semicolon delimited list of zone *names*, present only
+        # while the zone is linked to another.
+        self.linked_zones: list[str] = [
+            token.strip()
+            for token in (resp_info.get("LinkedZones") or "").split(";")
+            if token.strip()
         ]
         # music only
         self.artist: str = resp_info.get("Artist") or ""
@@ -330,15 +333,20 @@ class PlaybackInfo:
             "media_type": self.media_type.name,
             "media_sub_type": self.media_sub_type.name,
             "elapsed_time_display": self.elapsed_time_display,
+            "remaining_time_display": self.remaining_time_display,
             "total_time_display": self.total_time_display,
+            "position_display": self.position_display,
             "volume_display": self.volume_display,
             "playing_now_position": self.playing_now_position,
             "playing_now_tracks": self.playing_now_tracks,
+            "playing_now_position_display": self.playing_now_position_display,
             "bitrate": self.bitrate,
             "bitdepth": self.bitdepth,
             "sample_rate": self.sample_rate,
             "channels": self.channels,
             "chapter": self.chapter,
+            "lip_sync_adjustment_ms": self.lip_sync_adjustment_ms,
+            "rating": self.rating,
             "linked_zones": self.linked_zones,
             **self.extra_fields,
         }

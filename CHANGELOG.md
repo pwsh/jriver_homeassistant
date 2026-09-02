@@ -57,6 +57,20 @@ first time Home Assistant loads the new version.
   change of IP address no longer creates a duplicate entry.
 - Action failures now raise `HomeAssistantError` instead of being logged and swallowed.
 - Artwork is proxied through Home Assistant using an authenticated MCWS token.
+- The media player's `linked_zones` attribute now lists zone **names**, matching what Media Center
+  actually returns in `Playback/Info` (it previously tried to parse them as ids and was always
+  empty). `group_members` maps those names to the corresponding zone entity ids.
+- A zone with no file loaded no longer reports the stale duration, position, title, media type or
+  artwork that Media Center leaves behind from the previous track.
+- The zone name attribute falls back to the configured zone name for the local zone, which
+  `Playback/Info` reports without a `ZoneName`.
+- `jriver.search` and `jriver.append_search_results_to_playlist` now pass the limit to
+  `Files/Search` instead of fetching the whole result set and trimming it locally.
+- Loudness now uses the real `DSP/Loudness` endpoint; the previous `Playback/Loudness` call does
+  not exist and always failed. (Not exposed to Home Assistant users.)
+- `Playback/Info` also parses `RemainingTimeDisplay`, `PositionDisplay`,
+  `PlayingNowPositionDisplay`, `LipSyncAdjustmentMS` and `Rating`, which appear on the playing now
+  sensor.
 
 ### Fixed
 

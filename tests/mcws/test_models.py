@@ -109,6 +109,11 @@ def test_playback_info_defaults() -> None:
     assert info.state is PlaybackState.UNKNOWN
     assert info.playback_info == ""
     assert info.linked_zones == []
+    assert info.remaining_time_display == ""
+    assert info.position_display == ""
+    assert info.playing_now_position_display == ""
+    assert info.lip_sync_adjustment_ms == 0
+    assert info.rating == ""
     assert info.media_type is MediaType.NOT_AVAILABLE
     assert info.media_sub_type is MediaSubType.NOT_AVAILABLE
     assert str(info) == "[ : UNKNOWN]"
@@ -127,7 +132,11 @@ def test_playback_info_parsing() -> None:
             "PositionMS": "500",
             "DurationMS": "1000",
             "ElapsedTimeDisplay": "0:00",
+            "RemainingTimeDisplay": "Live",
             "TotalTimeDisplay": "Live",
+            "PositionDisplay": "0:00 / Live",
+            "PlayingNowPositionDisplay": "2 of 5",
+            "LipSyncAdjustmentMS": "40",
             "PlayingNowPosition": "1",
             "PlayingNowTracks": "5",
             "PlayingNowChangeCounter": "2",
@@ -140,7 +149,7 @@ def test_playback_info_parsing() -> None:
             "VolumeDisplay": "45% (-27.5 dB)",
             "ImageURL": "MCWS/v1/File/GetImage?File=1",
             "Name": "A Track",
-            "LinkedZones": "10074,10087,",
+            "LinkedZones": "Office;Kitchen;",
             "Media Type": "Audio",
             "Media Sub Type": "Music",
             "Artist": "An Artist",
@@ -157,7 +166,7 @@ def test_playback_info_parsing() -> None:
     assert info.state is PlaybackState.PLAYING
     assert info.status == "Playing"
     assert info.next_file_key == 124
-    assert info.linked_zones == [10074, 10087]
+    assert info.linked_zones == ["Office", "Kitchen"]
     assert info.bitrate == 1752
     assert info.bitdepth == 24
     assert info.sample_rate == 44100
@@ -166,6 +175,11 @@ def test_playback_info_parsing() -> None:
     assert info.playing_now_position == 1
     assert info.playing_now_tracks == 5
     assert info.playing_now_change_counter == 2
+    assert info.remaining_time_display == "Live"
+    assert info.position_display == "0:00 / Live"
+    assert info.playing_now_position_display == "2 of 5"
+    assert info.lip_sync_adjustment_ms == 40
+    assert info.rating == "5"
     assert info.playback_info == "raw"
     assert info.media_type is MediaType.AUDIO
     assert info.media_sub_type is MediaSubType.MUSIC
@@ -177,8 +191,13 @@ def test_playback_info_parsing() -> None:
     assert as_dict["zone_id"] == 10081
     assert as_dict["playback_state"] == "PLAYING"
     assert as_dict["media_sub_type"] == "MUSIC"
-    assert as_dict["linked_zones"] == [10074, 10087]
+    assert as_dict["linked_zones"] == ["Office", "Kitchen"]
     assert as_dict["Rating"] == "5"
+    assert as_dict["remaining_time_display"] == "Live"
+    assert as_dict["position_display"] == "0:00 / Live"
+    assert as_dict["playing_now_position_display"] == "2 of 5"
+    assert as_dict["lip_sync_adjustment_ms"] == 40
+    assert as_dict["rating"] == "5"
 
 
 def test_playback_info_muted_and_live() -> None:

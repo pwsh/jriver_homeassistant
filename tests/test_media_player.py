@@ -385,7 +385,7 @@ async def test_group_members_from_linked_zones(
 ) -> None:
     """Linked zones are reported as group members."""
     mock_media_server.playback[10] = make_playback_info(
-        mock_media_server.zones[0], LinkedZones="10,20"
+        mock_media_server.zones[0], LinkedZones="Player;Office"
     )
     await per_zone.runtime_data.coordinator.async_refresh()
     await hass.async_block_till_done()
@@ -393,6 +393,42 @@ async def test_group_members_from_linked_zones(
         ZONE_ENTITY,
         OFFICE_ENTITY,
     ]
+
+
+async def test_zone_name_falls_back_to_the_zone(
+    hass: HomeAssistant, per_zone, mock_media_server: FakeMediaServer
+) -> None:
+    """Playback/Info omits ZoneName for the local zone so the zone is used instead."""
+    mock_media_server.playback[10] = make_playback_info(mock_media_server.zones[0], ZoneName="")
+    await per_zone.runtime_data.coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert hass.states.get(ZONE_ENTITY).attributes["zone_name"] == "Player"
+
+
+async def test_idle_zone_with_no_file_reports_no_media(
+    hass: HomeAssistant, per_zone, mock_media_server: FakeMediaServer
+) -> None:
+    """A zone with no file reports a stale DurationMS which must not be surfaced."""
+    state = hass.states.get(OFFICE_ENTITY)
+    assert "media_duration" not in state.attributes
+    assert "media_position" not in state.attributes
+    assert "media_title" not in state.attributes
+    assert "media_content_type" not in state.attributes
+    assert "entity_picture" not in state.attributes
+
+
+async def test_stopped_zone_with_a_file_still_reports_media(
+    hass: HomeAssistant, per_zone, mock_media_server: FakeMediaServer
+) -> None:
+    """A stopped zone that still holds a file key keeps its metadata."""
+    mock_media_server.playback[20] = make_playback_info(
+        mock_media_server.zones[1], state=PlaybackState.STOPPED, file_key=960
+    )
+    await per_zone.runtime_data.coordinator.async_refresh()
+    await hass.async_block_till_done()
+    state = hass.states.get(OFFICE_ENTITY)
+    assert state.attributes["media_title"] == "Everybody Hertz"
+    assert state.attributes["media_duration"] == 300
 
 
 async def test_turn_off_stops_only_by_default(

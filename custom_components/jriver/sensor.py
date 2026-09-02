@@ -167,6 +167,10 @@ class JRiverPlayingNowSensor(MediaServerEntity, SensorEntity):
             for key, value in info.as_dict().items()
             if key not in ("position_ms", "duration_ms", "elapsed_time_display")
         }
+        # Playback/Info omits ZoneName for the local (non DLNA) zone.
+        if not attributes.get("zone_name"):
+            zone = self.data.zone_for(self._zone_id)
+            attributes["zone_name"] = zone.name if zone else ""
         attributes["is_active"] = self.data.active_zone_id == self._zone_id
         return attributes
 

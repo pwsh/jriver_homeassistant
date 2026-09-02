@@ -69,7 +69,7 @@ PLAYBACK_INFO = """<Response Status="OK">
 <Item Name="Chapter">0</Item>
 <Item Name="Volume">0.44999</Item>
 <Item Name="VolumeDisplay">45% (-27.5 dB)</Item>
-<Item Name="LinkedZones">10074,10087</Item>
+<Item Name="LinkedZones">Office;Kitchen</Item>
 <Item Name="ImageURL">MCWS/v1/File/GetImage?File=4294967295</Item>
 <Item Name="Name">Media Center</Item>
 </Response>"""
@@ -205,7 +205,7 @@ async def test_playback_info(fake, make_server) -> None:
     assert info.zone_id == 10081
     assert info.state is PlaybackState.STOPPED
     assert info.duration_ms == 1229000
-    assert info.linked_zones == [10074, 10087]
+    assert info.linked_zones == ["Office", "Kitchen"]
     assert info.playback_info == ""
     assert info.image_url.endswith("File=4294967295&Token=1234567")
     assert info.extra_fields == {"Rating": ""}
@@ -361,18 +361,20 @@ async def test_shuffle(fake, make_server) -> None:
 async def test_loudness(fake, make_server) -> None:
     """Loudness can be queried and set."""
     fake.set(
-        "Playback/Loudness",
-        '<Response Status="OK"><Item Name="Loudness">1</Item></Response>',
+        "DSP/Loudness",
+        '<Response Status="OK"><Item Name="Current">1</Item></Response>',
     )
     ms = await make_server()
     assert await ms.get_loudness() is True
-    assert await ms.set_loudness(False) is True
-    assert fake.params("Playback/Loudness")["Set"] == "0"
+    assert await ms.set_loudness(True) is True
+    assert fake.params("DSP/Loudness")["Set"] == "1"
     fake.set(
-        "Playback/Loudness",
-        '<Response Status="OK"><Item Name="State">0</Item></Response>',
+        "DSP/Loudness",
+        '<Response Status="OK"><Item Name="Current">0</Item></Response>',
     )
     assert await ms.get_loudness() is False
+    assert await ms.set_loudness(False) is False
+    assert fake.params("DSP/Loudness")["Set"] == "0"
 
 
 async def test_load_dsp_preset(fake, make_server) -> None:
@@ -551,6 +553,7 @@ async def test_search_files(fake, make_server) -> None:
     ms = await make_server()
     assert len(await ms.search_files("[Artist]=[x]")) == 2
     assert len(await ms.search_files("[Artist]=[x]", limit=1)) == 1
+    assert fake.params("Files/Search")["Limit"] == "1"
     assert fake.params("Files/Search")["Action"] == "JSON"
     with pytest.raises(ValueError, match="No query"):
         await ms.search_files("")

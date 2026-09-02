@@ -245,15 +245,16 @@ class JRiverMediaPlayer(MediaServerEntity, MediaPlayerEntity):
     def media_content_type(self) -> MediaType | str | None:
         """Return the type of the playing file."""
         info = self._info
-        if info is None:
+        if info is None or info.file_key == -1:
             return None
         return translate_to_media_type(info.media_type, info.media_sub_type, single=True)
 
     @property
     def media_duration(self) -> int | None:
         """Return the duration in seconds."""
+        # an idle zone with no file still reports a stale DurationMS
         info = self._info
-        if info is None or info.live_input or not info.duration_ms:
+        if info is None or info.file_key == -1 or info.live_input or not info.duration_ms:
             return None
         return round(info.duration_ms / 1000) if info.duration_ms > 0 else None
 
@@ -261,7 +262,7 @@ class JRiverMediaPlayer(MediaServerEntity, MediaPlayerEntity):
     def media_position(self) -> int | None:
         """Return the position in seconds."""
         info = self._info
-        if info is None or info.live_input or info.position_ms is None:
+        if info is None or info.file_key == -1 or info.live_input or info.position_ms is None:
             return None
         return round(info.position_ms / 1000) if info.position_ms >= 0 else None
 
@@ -274,14 +275,17 @@ class JRiverMediaPlayer(MediaServerEntity, MediaPlayerEntity):
     def media_image_url(self) -> str | None:
         """Return the artwork url."""
         info = self._info
-        if info is None or not info.image_url:
+        if info is None or info.file_key == -1 or not info.image_url:
             return None
         return self.server.make_url(info.image_url)
 
     @property
     def media_title(self) -> str | None:
         """Return the title."""
-        return self._info.name if self._info else None
+        info = self._info
+        if info is None or info.file_key == -1:
+            return None
+        return info.name
 
     @property
     def media_artist(self) -> str | None:
@@ -355,8 +359,10 @@ class JRiverMediaPlayer(MediaServerEntity, MediaPlayerEntity):
         if info is None:
             return None
         members = [self.entity_id]
-        for zone_id in info.linked_zones:
-            if zone_id == self._zone_id:
+        ids_by_name = {zone.name: zone.id for zone in self.data.zones}
+        for zone_name in info.linked_zones:
+            zone_id = ids_by_name.get(zone_name)
+            if zone_id is None or zone_id == self._zone_id:
                 continue
             if entity_id := self._entity_id_for_zone(zone_id):
                 members.append(entity_id)
@@ -380,8 +386,12 @@ class JRiverMediaPlayer(MediaServerEntity, MediaPlayerEntity):
         if info is None:
             return None
         audio_path = self.data.audio_path(self._zone_id)
+        # Playback/Info omits ZoneName for the local (non DLNA) zone.
+        zone_name = info.zone_name
+        if not zone_name and (zone := self.data.zone_for(self._zone_id)) is not None:
+            zone_name = zone.name
         attributes: dict[str, Any] = {
-            "zone_name": info.zone_name,
+            "zone_name": zone_name,
             "zone_id": info.zone_id,
             "linked_zones": info.linked_zones,
             "playing_now_position": info.playing_now_position,

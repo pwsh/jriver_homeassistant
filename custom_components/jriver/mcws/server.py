@@ -31,6 +31,7 @@ from .models import (
     ShuffleMode,
     ViewMode,
     Zone,
+    _as_int,
     _safe_enum,
 )
 
@@ -415,20 +416,17 @@ class MediaServer:
         return await self.set_shuffle_mode(ShuffleMode.ON if shuffle else ShuffleMode.OFF, zone)
 
     async def get_loudness(self, zone: Zone | str | None = None) -> bool:
-        """Whether loudness (Adaptive Volume) is enabled."""
-        _, resp = await self._conn.get_as_dict("Playback/Loudness", params=self._zone_params(zone))
-        value = resp.get("Loudness")
-        if value is None:
-            value = resp.get("State")
-        return bool(int(value or 0))
+        """Whether loudness is enabled."""
+        _, resp = await self._conn.get_as_dict("DSP/Loudness", params=self._zone_params(zone))
+        return _as_int(resp.get("Current"), 0) != 0
 
     async def set_loudness(self, on: bool, zone: Zone | str | None = None) -> bool:
-        """Turn loudness on or off."""
-        ok, _ = await self._conn.get_as_dict(
-            "Playback/Loudness",
+        """Turn loudness on or off, returning the resulting state."""
+        _, resp = await self._conn.get_as_dict(
+            "DSP/Loudness",
             params={"Set": "1" if on else "0", **self._zone_params(zone)},
         )
-        return ok
+        return _as_int(resp.get("Current"), 0) != 0
 
     async def load_dsp_preset(self, name: str, zone: Zone | str | None = None) -> bool:
         """Load the named DSP preset (MC 23.0.2+)."""
@@ -686,10 +684,11 @@ class MediaServer:
         if not query:
             raise ValueError("No query supplied")
         field_list = ",".join(DEFAULT_FILE_FIELDS + (fields or []))
-        _, resp = await self._conn.get_as_json_list(
-            "Files/Search",
-            params={"Query": query, "Action": "JSON", "Fields": field_list},
-        )
+        params = {"Query": query, "Action": "JSON", "Fields": field_list}
+        if limit is not None:
+            # Files/Search supports a server side Limit, avoiding a full library payload.
+            params["Limit"] = str(limit)
+        _, resp = await self._conn.get_as_json_list("Files/Search", params=params)
         return resp[:limit] if limit is not None else resp
 
     async def play_search(

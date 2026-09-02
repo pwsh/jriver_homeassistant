@@ -99,3 +99,14 @@ async def test_playing_now_includes_extra_fields(
     await setup_integration(hass, build_entry(options={CONF_EXTRA_FIELDS: ["Genre"]}))
     state = hass.states.get("sensor.phosphorus_player_playing_now")
     assert state.attributes["Genre"] == "Electronic"
+
+
+async def test_playing_now_sensor_zone_name_fallback(
+    hass: HomeAssistant, init_integration: MockConfigEntry, mock_media_server: FakeMediaServer
+) -> None:
+    """Playback/Info omits ZoneName for the local zone so the zone is used instead."""
+    mock_media_server.playback[10] = make_playback_info(mock_media_server.zones[0], ZoneName="")
+    await init_integration.runtime_data.coordinator.async_refresh()
+    await hass.async_block_till_done()
+    state = hass.states.get("sensor.phosphorus_player_playing_now")
+    assert state.attributes["zone_name"] == "Player"
