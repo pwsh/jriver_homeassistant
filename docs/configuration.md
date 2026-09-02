@@ -21,7 +21,7 @@ key is resolved to a host and port for you.
 
 | Field | Notes |
 | --- | --- |
-| API key | The access key shown in Options > Media Network, for example `AbCdEf`. |
+| Access key | The access key shown in Options > Media Network, for example `AbCdEf`. |
 | Host | Hostname or IP address of the machine running Media Center, for example `mc.local`. |
 | Port | The Media Network port. `52199` by default. |
 | Name | A memorable name for the server. Left blank, the name Media Center reports is used. |

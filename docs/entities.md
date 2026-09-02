@@ -7,8 +7,11 @@ nav_order: 5
 
 ## Devices and naming
 
-One device represents the server. In per zone mode each selected zone gets a device too, with
-the server as its `via_device`.
+One device represents the server, in both single device and per zone mode. Every allowed zone
+gets a device too, in both modes, with the server as its `via_device`. The server device holds
+the server media player, the remote and the active zone, UI mode and version sensors; the zone
+devices hold that zone's playing now, playing now list and audio direct entities, plus the zone
+media player in per zone mode.
 
 | Device | Name | Model |
 | --- | --- | --- |

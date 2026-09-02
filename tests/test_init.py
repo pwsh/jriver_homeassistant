@@ -17,7 +17,7 @@ from custom_components.jriver.const import (
 )
 from custom_components.jriver.mcws import CannotConnectError, InvalidAuthError
 from homeassistant.config_entries import ConfigEntryState
-from homeassistant.const import CONF_HOST, CONF_MAC, CONF_NAME, CONF_PORT
+from homeassistant.const import CONF_API_KEY, CONF_HOST, CONF_MAC, CONF_NAME, CONF_PORT
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 
@@ -119,6 +119,58 @@ async def test_migration_moves_options(
     assert entry.options[CONF_POLL_INTERVAL] == 2
     assert entry.options[CONF_TURN_OFF_BEHAVIOUR] == "stop"
     assert entry.options[CONF_DSP_PRESETS] == []
+
+
+async def test_migration_retitles_entry_from_access_key(
+    hass: HomeAssistant, mock_media_server: FakeMediaServer
+) -> None:
+    """A version 1 entry titled with the access key is retitled to the name."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=ACCESS_KEY,
+        title=ACCESS_KEY,
+        version=1,
+        data={
+            CONF_API_KEY: ACCESS_KEY,
+            CONF_NAME: "Phosphorus",
+            CONF_HOST: "1.1.1.1",
+            CONF_PORT: 52199,
+            CONF_MAC: [],
+            CONF_BROWSE_PATHS: [],
+            CONF_DEVICE_PER_ZONE: False,
+            CONF_DEVICE_ZONES: [],
+            CONF_EXTRA_FIELDS: [],
+        },
+    )
+    await setup_integration(hass, entry)
+
+    assert entry.title == "Phosphorus"
+
+
+async def test_migration_keeps_custom_title(
+    hass: HomeAssistant, mock_media_server: FakeMediaServer
+) -> None:
+    """A version 1 entry with a custom title keeps it."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=ACCESS_KEY,
+        title="Downstairs stack",
+        version=1,
+        data={
+            CONF_API_KEY: ACCESS_KEY,
+            CONF_NAME: "Phosphorus",
+            CONF_HOST: "1.1.1.1",
+            CONF_PORT: 52199,
+            CONF_MAC: [],
+            CONF_BROWSE_PATHS: [],
+            CONF_DEVICE_PER_ZONE: False,
+            CONF_DEVICE_ZONES: [],
+            CONF_EXTRA_FIELDS: [],
+        },
+    )
+    await setup_integration(hass, entry)
+
+    assert entry.title == "Downstairs stack"
 
 
 async def test_migration_rewrites_unique_ids(

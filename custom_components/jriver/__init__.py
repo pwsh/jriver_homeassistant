@@ -187,7 +187,15 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         await _async_migrate_server_unique_ids(hass, entry)
 
-        hass.config_entries.async_update_entry(entry, data=data, options=options, version=2)
+        updates: dict[str, Any] = {}
+        name = data.get(CONF_NAME) or ""
+        if name and entry.title in {data.get(CONF_API_KEY), data.get(CONF_HOST)}:
+            _LOGGER.debug("Retitling %s to %s", entry.entry_id, name)
+            updates["title"] = name
+
+        hass.config_entries.async_update_entry(
+            entry, data=data, options=options, version=2, **updates
+        )
 
     return True
 

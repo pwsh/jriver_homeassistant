@@ -18,11 +18,12 @@ attention.
 | Change | Detail |
 | --- | --- |
 | Config entry version | Version 1 entries are migrated to version 2 on load. |
-| Data moves to options | `browse_paths`, `per_zone`, `device_zones`, `extra_fields` and `use_wol` move from entry data to entry options. The new `poll_interval`, `turn_off_behaviour` and `dsp_presets` options are given their defaults. A `timeout` and an empty `api_key` are added to entry data if missing. |
+| Data moves to options | `browse_paths`, `per_zone`, `device_zones`, `extra_fields` and `use_wol` move from entry data to entry options. The new `poll_interval`, `turn_off_behaviour` and `dsp_presets` options are given their defaults. A `timeout` and an empty `api_key` are added to entry data if missing; the field is labelled **Access key** in the UI but the stored key remains `api_key`. |
 | Server entity unique ids | `<uid>_player` becomes `<uid>_media_player`, `<uid>_activezone` becomes `<uid>_active_zone`, `<uid>_uimode` becomes `<uid>_ui_mode`. |
 | Zone entity unique ids | Rewritten on the first successful refresh, when the zone ids are known: `<uid>_player-<zone name>`, `<uid>_<zone name>_playingnow` and `<uid>_<zone name>_playlist` become `<uid>_zone_<zone id>_media_player`, `…_playing_now` and `…_playlist`. |
 | Entity ids and history | Preserved, because the registry entries are rewritten rather than recreated. |
 | Devices | One device for the server, plus one per zone in per zone mode, replacing the old device-per-entity layout. |
+| Entry title | Version 1 entries titled with the access key or the host are retitled to the configured name, so the integration page lists the server by name. |
 | Entry identity | The entry's unique id is now the Media Center access key when the server reports one, so a change of IP address no longer creates a duplicate entry. |
 
 Because zone entities are now keyed by zone **id** rather than name, renaming a zone in Media

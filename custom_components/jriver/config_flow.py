@@ -442,6 +442,7 @@ class JRiverConfigFlow(ConfigFlow, domain=DOMAIN):
                 self._abort_if_unique_id_mismatch(reason="wrong_server")
                 return self.async_update_reload_and_abort(
                     entry,
+                    title=self._friendly_name or self._host,
                     data_updates={
                         CONF_API_KEY: self._access_key,
                         CONF_HOST: self._host,

@@ -302,6 +302,31 @@ async def test_reconfigure(
     assert entry.data[CONF_HOST] == "2.2.2.2"
 
 
+async def test_reconfigure_updates_title(
+    hass: HomeAssistant, mock_setup_entry: AsyncMock, fake_server: FakeMediaServer
+) -> None:
+    """Reconfigure retitles the entry when the friendly name changes."""
+    entry = build_entry()
+    entry.add_to_hass(hass)
+    result = await entry.start_reconfigure_flow(hass)
+
+    with patch(TARGET, _loader(fake_server)):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {
+                CONF_HOST: "1.1.1.1",
+                CONF_PORT: 52199,
+                CONF_SSL: False,
+                CONF_NAME: "Upstairs",
+            },
+        )
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "reconfigure_successful"
+    assert entry.data[CONF_NAME] == "Upstairs"
+    assert entry.title == "Upstairs"
+
+
 async def test_reconfigure_wrong_server(
     hass: HomeAssistant, mock_setup_entry: AsyncMock, fake_server: FakeMediaServer
 ) -> None:
