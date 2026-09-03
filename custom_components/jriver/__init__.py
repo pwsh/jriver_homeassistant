@@ -20,7 +20,11 @@ from homeassistant.const import (
     Platform,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import config_validation as cv, entity_registry as er
+from homeassistant.helpers import (
+    config_validation as cv,
+    device_registry as dr,
+    entity_registry as er,
+)
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import ConfigType
 
@@ -45,6 +49,7 @@ from .const import (
     TurnOffBehaviour,
 )
 from .coordinator import MediaServerUpdateCoordinator
+from .entity import server_device_id, zone_device_id
 from .mcws import MediaServer, get_mcws_connection
 from .models import JRiverConfigEntry, JRiverRuntimeData
 from .services import async_register_services
@@ -148,9 +153,47 @@ async def async_setup_entry(hass: HomeAssistant, entry: JRiverConfigEntry) -> bo
 
     await coordinator.async_config_entry_first_refresh()
     await _async_migrate_zone_unique_ids(hass, entry)
+    _async_remove_stale_devices(hass, entry)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
+
+
+def _expected_device_ids(entry: JRiverConfigEntry) -> set[tuple[str, str]]:
+    """Return the device registry identifiers this entry should own.
+
+    Every zone the server reports is included, not just the allowed ones, so a zone
+    that is temporarily filtered out of the options does not lose its device.
+    """
+    expected = {(DOMAIN, server_device_id(entry))}
+    expected.update(
+        (DOMAIN, zone_device_id(entry, zone.id))
+        for zone in entry.runtime_data.coordinator.data.zones
+    )
+    return expected
+
+
+@callback
+def _async_remove_stale_devices(hass: HomeAssistant, entry: JRiverConfigEntry) -> None:
+    """Drop devices this entry no longer owns.
+
+    Version 0.4.x created a device per entity and zones may have been removed from the
+    server since the last load; both leave empty devices cluttering the UI.
+    """
+    expected = _expected_device_ids(entry)
+    registry = dr.async_get(hass)
+    for device in dr.async_entries_for_config_entry(registry, entry.entry_id):
+        if device.identifiers & expected:
+            continue
+        _LOGGER.debug("Removing stale device %s (%s)", device.name, device.identifiers)
+        registry.async_update_device(device.id, remove_config_entry_id=entry.entry_id)
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant, entry: JRiverConfigEntry, device_entry: dr.DeviceEntry
+) -> bool:
+    """Allow deletion of any device that is no longer backed by the server."""
+    return not device_entry.identifiers & _expected_device_ids(entry)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: JRiverConfigEntry) -> bool:

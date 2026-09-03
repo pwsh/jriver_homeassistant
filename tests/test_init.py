@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.jriver import async_remove_config_entry_device
 from custom_components.jriver.const import (
     CONF_BROWSE_PATHS,
     CONF_DEVICE_PER_ZONE,
@@ -234,3 +235,63 @@ async def test_options_update_reloads(
     await hass.async_block_till_done()
     assert init_integration.state is ConfigEntryState.LOADED
     assert init_integration.runtime_data.coordinator._poll_interval == 5
+
+
+async def test_stale_devices_are_removed(
+    hass: HomeAssistant, mock_media_server: FakeMediaServer
+) -> None:
+    """0.4.x per entity devices and devices for removed zones are cleaned up."""
+    entry = build_entry(
+        options={CONF_DEVICE_PER_ZONE: True, CONF_DEVICE_ZONES: ["Player", "Office"]}
+    )
+    entry.add_to_hass(hass)
+    devices = dr.async_get(hass)
+    legacy = devices.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, f"{ACCESS_KEY}_player")},
+        manufacturer="JRiver",
+        model="Media Server - media_player",
+        name="Phosphorus",
+    )
+    gone = devices.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, f"{ACCESS_KEY}_zone_99")},
+        manufacturer="JRiver",
+        model="Zone",
+        name="Phosphorus Deleted",
+    )
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert devices.async_get(legacy.id) is None
+    assert devices.async_get(gone.id) is None
+    assert devices.async_get_device(identifiers={(DOMAIN, ACCESS_KEY)}) is not None
+    for zone_id in (10, 20):
+        assert (
+            devices.async_get_device(identifiers={(DOMAIN, f"{ACCESS_KEY}_zone_{zone_id}")})
+            is not None
+        )
+
+
+async def test_remove_config_entry_device(
+    hass: HomeAssistant, mock_media_server: FakeMediaServer
+) -> None:
+    """Live devices cannot be deleted from the UI, stale ones can."""
+    entry = build_entry(
+        options={CONF_DEVICE_PER_ZONE: True, CONF_DEVICE_ZONES: ["Player", "Office"]}
+    )
+    await setup_integration(hass, entry)
+
+    devices = dr.async_get(hass)
+    server = devices.async_get_device(identifiers={(DOMAIN, ACCESS_KEY)})
+    zone = devices.async_get_device(identifiers={(DOMAIN, f"{ACCESS_KEY}_zone_10")})
+    assert await async_remove_config_entry_device(hass, entry, server) is False
+    assert await async_remove_config_entry_device(hass, entry, zone) is False
+
+    stale = devices.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, f"{ACCESS_KEY}_zone_99")},
+        name="Phosphorus Deleted",
+    )
+    assert await async_remove_config_entry_device(hass, entry, stale) is True

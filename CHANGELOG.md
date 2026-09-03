@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.1
+
+- Remove the empty per-entity devices left behind by 0.4.x and devices for zones that no
+  longer exist on the server, on every load. Stale devices can also be deleted from the UI.
+
 ## 2.0.0
 
 A rework of the integration. Existing config entries and entities are migrated automatically the
@@ -27,6 +32,9 @@ first time Home Assistant loads the new version.
 
 ### Added
 
+- Stale device cleanup. The empty per entity devices created by 0.4.4, and devices for zones that
+  no longer exist on the server, are removed on load; anything else no longer backed by the server
+  can be deleted from its device page.
 - Reauthentication and reconfiguration flows.
 - A full options flow: poll interval, turn off behaviour, DSP presets, zone topology, zone
   allowlist, browse paths, MAC addresses and extra fields.
