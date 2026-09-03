@@ -234,7 +234,7 @@
       "fields": {
         "query": {
           "name": "Search query",
-          "description": "A JRiver search expression as per https://wiki.jriver.com/index.php/Search_Language"
+          "description": "A JRiver search expression (see the Search Language page on the JRiver wiki)"
         }
       }
     },
@@ -254,7 +254,7 @@
       "fields": {
         "query": {
           "name": "Search query",
-          "description": "A JRiver search expression as per https://wiki.jriver.com/index.php/Search_Language"
+          "description": "A JRiver search expression (see the Search Language page on the JRiver wiki)"
         },
         "play_mode": {
           "name": "Play mode",
@@ -380,7 +380,7 @@
         },
         "query": {
           "name": "Search query",
-          "description": "A JRiver search expression as per https://wiki.jriver.com/index.php/Search_Language"
+          "description": "A JRiver search expression (see the Search Language page on the JRiver wiki)"
         },
         "fields": {
           "name": "Fields",

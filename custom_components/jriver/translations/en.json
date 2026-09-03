@@ -252,7 +252,7 @@
       "description": "Adds the results of a library search to the end of the playing now list.",
       "fields": {
         "query": {
-          "description": "A JRiver search expression as per https://wiki.jriver.com/index.php/Search_Language",
+          "description": "A JRiver search expression (see the Search Language page on the JRiver wiki)",
           "name": "Search query"
         }
       },
@@ -300,7 +300,7 @@
           "name": "Play mode"
         },
         "query": {
-          "description": "A JRiver search expression as per https://wiki.jriver.com/index.php/Search_Language",
+          "description": "A JRiver search expression (see the Search Language page on the JRiver wiki)",
           "name": "Search query"
         }
       },
@@ -322,7 +322,7 @@
           "name": "Limit"
         },
         "query": {
-          "description": "A JRiver search expression as per https://wiki.jriver.com/index.php/Search_Language",
+          "description": "A JRiver search expression (see the Search Language page on the JRiver wiki)",
           "name": "Search query"
         }
       },
