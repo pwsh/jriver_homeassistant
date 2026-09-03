@@ -252,7 +252,7 @@
       "description": "Adiciona itens da biblioteca à lista de reprodução atual..",
       "fields": {
         "query": {
-          "description": "Uma expressão de pesquisa JRiver conforme https://wiki.jriver.com/index.php/Search_Language",
+          "description": "Uma expressão de pesquisa JRiver (ver a página Search Language na wiki do JRiver)",
           "name": "Consulta de Pesquisa"
         }
       },
