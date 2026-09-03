@@ -31,8 +31,10 @@ Media Center's own configuration.
 2. From the overflow menu choose **Custom repositories**.
 3. Add the repository `https://github.com/pwsh/jriver_homeassistant` with the category
    **Integration**.
-4. Search for **JRiver Media Center**, open it and choose **Download**.
-5. Restart Home Assistant.
+4. Search for **JRiver Media Center**, open it and choose **Download**. Pick version **2.0.0** or
+   newer when HACS asks; the fork's `main` branch and its releases both carry the rework.
+5. Restart Home Assistant. **Settings > Devices & Services > JRiver Media Center** should then
+   show version 2.0.0 on the integration page.
 
 {: .warning }
 > If you already have the upstream **3ll3d00d** version installed through HACS, remove it

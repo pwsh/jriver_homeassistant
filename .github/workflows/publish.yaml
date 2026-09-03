@@ -20,17 +20,12 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.13"
-      - name: Generate changelog
-        id: changelog
-        uses: metcalfc/changelog-generator@v5.0.1
-        with:
-          myToken: ${{ secrets.GITHUB_TOKEN }}
       - name: Create release
         id: create_release
         uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          body: ${{ steps.changelog.outputs.changelog }}
+          generate_release_notes: true
           draft: false
           prerelease: false

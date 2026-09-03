@@ -2,3 +2,5 @@
 pytest-homeassistant-custom-component
 pytest-cov
 ruff
+# requirement of the wake_on_lan core integration, imported by the tests
+wakeonlan
