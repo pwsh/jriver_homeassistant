@@ -25,6 +25,7 @@ class JRiverRuntimeData:
     per_zone: bool = False
     turn_off_behaviour: TurnOffBehaviour = DEFAULT_TURN_OFF_BEHAVIOUR
     dsp_presets: list[str] = field(default_factory=list)
+    server_registry_id: str | None = None
 
 
 type JRiverConfigEntry = ConfigEntry[JRiverRuntimeData]

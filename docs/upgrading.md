@@ -10,8 +10,8 @@ first time Home Assistant loads it. This page lists what happens on its own and 
 attention.
 
 {: .warning }
-> If the upstream 3ll3d00d version is installed through HACS, remove it before installing this
-> fork. Both use the Home Assistant domain `jriver`, so they cannot coexist.
+> If the upstream 3ll3d00d version is installed through HACS or the Marketplace, remove it before
+> installing this fork. Both use the Home Assistant domain `jriver`, so they cannot coexist.
 
 ## What happens automatically
 

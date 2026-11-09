@@ -20,7 +20,7 @@ jobs:
         id: setup-python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: "3.14"
       - name: Load cached venv
         id: cached-venv
         uses: actions/cache@v6

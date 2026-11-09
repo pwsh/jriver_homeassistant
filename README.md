@@ -31,11 +31,15 @@ requirements**.
 
 ## Installation
 
-### HACS
+### Marketplace (Home Assistant 2026.11 or newer)
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=3ll3d00d&repository=jriver_homeassistant)
+Go to **Settings > Marketplace > Add from link**, enter `pwsh/jriver_homeassistant`, then install
+**JRiver Media Center**. Adding a repository from a link needs a GitHub connection.
 
-Add this repository to HACS as an integration, install it, then restart Home Assistant.
+### HACS (Home Assistant 2026.10 or older)
+
+Add `https://github.com/pwsh/jriver_homeassistant` to HACS as a custom repository of type
+Integration, install it, then restart Home Assistant.
 
 ### Manual
 

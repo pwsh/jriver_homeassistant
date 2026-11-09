@@ -8,10 +8,6 @@ import re
 
 import voluptuous as vol
 
-from homeassistant.components.wake_on_lan import (
-    DOMAIN as WOL_DOMAIN,
-    SERVICE_SEND_MAGIC_PACKET,
-)
 from homeassistant.const import ATTR_DEVICE_ID, ATTR_ENTITY_ID
 from homeassistant.core import (
     HomeAssistant,
@@ -49,7 +45,9 @@ from .const import (
     PLAYLIST_FIELDS,
     SERVICE_GET_PLAYLIST,
     SERVICE_SEARCH,
+    SERVICE_SEND_MAGIC_PACKET,
     SERVICE_WAKE,
+    WOL_DOMAIN,
 )
 from .mcws import MediaServerError
 from .models import JRiverConfigEntry

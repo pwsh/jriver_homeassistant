@@ -25,7 +25,21 @@ service enabled.
 Nothing else needs configuring on the Media Center side. The integration never writes to
 Media Center's own configuration.
 
+## Marketplace
+
+Home Assistant 2026.11 replaced HACS with the built-in Marketplace. An installation made through
+HACS moves over automatically and keeps receiving updates.
+
+1. Go to **Settings > Marketplace** and select **Add from link**. This needs a GitHub connection.
+2. Enter `pwsh/jriver_homeassistant` and select **Add**. If asked for a type, choose
+   **Integration**.
+3. Open **JRiver Media Center** and install version **2.0.2** or newer. Older versions do not
+   load on Home Assistant 2026.11.
+4. Restart Home Assistant if prompted.
+
 ## HACS
+
+For Home Assistant 2026.10 or older.
 
 1. In Home Assistant open **HACS**.
 2. From the overflow menu choose **Custom repositories**.
@@ -37,10 +51,10 @@ Media Center's own configuration.
    show version 2.0.0 on the integration page.
 
 {: .warning }
-> If you already have the upstream **3ll3d00d** version installed through HACS, remove it
-> first. Both use the Home Assistant domain `jriver`, so Home Assistant will load only one of
-> them and the result is undefined. Delete the upstream repository from HACS, restart, then
-> install this fork. Your existing config entries, devices and entities are migrated
+> If you already have the upstream **3ll3d00d** version installed through HACS or the
+> Marketplace, remove it first. Both use the Home Assistant domain `jriver`, so Home Assistant
+> will load only one of them and the result is undefined. Delete the upstream repository,
+> restart, then install this fork. Your existing config entries, devices and entities are migrated
 > automatically the first time the new version loads. See
 > [Upgrading]({{ site.baseurl }}/upgrading/).
 

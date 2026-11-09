@@ -12,15 +12,14 @@ from custom_components.jriver.const import (
     DOMAIN,
     SERVICE_GET_PLAYLIST,
     SERVICE_SEARCH,
-    SERVICE_WAKE,
-)
-from homeassistant.components.wake_on_lan import (
-    DOMAIN as WOL_DOMAIN,
     SERVICE_SEND_MAGIC_PACKET,
+    SERVICE_WAKE,
+    WOL_DOMAIN,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import device_registry as dr
+from homeassistant.setup import async_setup_component
 
 from .conftest import ACCESS_KEY, FakeMediaServer, build_entry, setup_integration
 
@@ -35,6 +34,13 @@ def wol_calls(hass: HomeAssistant):
 
     hass.services.async_register(WOL_DOMAIN, SERVICE_SEND_MAGIC_PACKET, _handler)
     return calls
+
+
+async def test_wol_constants_match_core_service(hass: HomeAssistant) -> None:
+    """The locally defined names match what the core integration registers."""
+    assert await async_setup_component(hass, WOL_DOMAIN, {})
+    await hass.async_block_till_done()
+    assert hass.services.has_service(WOL_DOMAIN, SERVICE_SEND_MAGIC_PACKET)
 
 
 async def test_wake_resolves_via_entity_registry(
@@ -52,7 +58,7 @@ async def test_wake_resolves_via_device_registry(
 ) -> None:
     """The wake action also accepts a device id."""
     devices = dr.async_get(hass)
-    device = devices.async_get_device(identifiers={(DOMAIN, ACCESS_KEY)})
+    device = devices.async_get_device_by_identifier((DOMAIN, ACCESS_KEY), init_integration.entry_id)
     await hass.services.async_call(DOMAIN, SERVICE_WAKE, {"device_id": device.id}, blocking=True)
     assert wol_calls == [{"mac": "aa:bb:cc:dd:ee:ff"}]
 

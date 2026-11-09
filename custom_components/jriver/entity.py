@@ -7,7 +7,9 @@ from functools import wraps
 import logging
 from typing import Any, Concatenate
 
-from homeassistant.const import CONF_HOST, CONF_PORT, CONF_SSL
+from awesomeversion import AwesomeVersion
+
+from homeassistant.const import CONF_HOST, CONF_PORT, CONF_SSL, __version__ as HA_VERSION
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -24,6 +26,9 @@ from .models import JRiverConfigEntry
 
 _LOGGER = logging.getLogger(__name__)
 
+# via_device_id arrived in 2026.8, its predecessor via_device stops working in 2027.8
+SUPPORTS_VIA_DEVICE_ID = AwesomeVersion(HA_VERSION) >= AwesomeVersion("2026.8.0b0")
+
 
 def entry_unique_id(entry: JRiverConfigEntry) -> str:
     """Return a stable id for the config entry."""
@@ -38,6 +43,29 @@ def server_device_id(entry: JRiverConfigEntry) -> str:
 def zone_device_id(entry: JRiverConfigEntry, zone_id: int) -> str:
     """Return the identifier of a zone device."""
     return f"{entry_unique_id(entry)}_zone_{zone_id}"
+
+
+def server_device_fields(entry: JRiverConfigEntry) -> dict[str, Any]:
+    """Return the device registry fields of the server device."""
+    info = entry.runtime_data.coordinator.data.server_info
+    scheme = "https" if entry.data.get(CONF_SSL) else "http"
+    return {
+        "identifiers": {(DOMAIN, server_device_id(entry))},
+        "manufacturer": "JRiver",
+        "model": f"Media Center ({info.platform if info else 'Unknown'})",
+        "sw_version": info.version if info else None,
+        "name": entry.runtime_data.server_name,
+        "configuration_url": (
+            f"{scheme}://{entry.data.get(CONF_HOST)}:{entry.data.get(CONF_PORT)}/"
+        ),
+    }
+
+
+def _via_server_device(entry: JRiverConfigEntry) -> dict[str, Any]:
+    """Return the device info field linking a zone device to the server device."""
+    if SUPPORTS_VIA_DEVICE_ID:
+        return {"via_device_id": entry.runtime_data.server_registry_id}
+    return {"via_device": (DOMAIN, server_device_id(entry))}
 
 
 def build_unique_id(entry: JRiverConfigEntry, kind: str, zone_id: int | None) -> str:
@@ -69,27 +97,15 @@ class MediaServerEntity(CoordinatorEntity[MediaServerUpdateCoordinator]):
         self._server_name = entry.runtime_data.server_name
         self._attr_unique_id = build_unique_id(entry, kind, zone_id)
 
-        info = coordinator.data.server_info
-        scheme = "https" if entry.data.get(CONF_SSL) else "http"
-        server_info = DeviceInfo(
-            identifiers={(DOMAIN, server_device_id(entry))},
-            manufacturer="JRiver",
-            model=f"Media Center ({info.platform if info else 'Unknown'})",
-            sw_version=info.version if info else None,
-            name=self._server_name,
-            configuration_url=(
-                f"{scheme}://{entry.data.get(CONF_HOST)}:{entry.data.get(CONF_PORT)}/"
-            ),
-        )
         if zone_id is None:
-            self._attr_device_info = server_info
+            self._attr_device_info = DeviceInfo(**server_device_fields(entry))
         else:
             self._attr_device_info = DeviceInfo(
                 identifiers={(DOMAIN, zone_device_id(entry, zone_id))},
                 manufacturer="JRiver",
                 model="Zone",
                 name=f"{self._server_name} {zone_name}",
-                via_device=(DOMAIN, server_device_id(entry)),
+                **_via_server_device(entry),
             )
 
     @property

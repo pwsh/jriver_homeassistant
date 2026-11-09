@@ -84,6 +84,10 @@ SERVICE_SEND_MCC: Final = "send_mcc"
 SERVICE_STOP_AFTER: Final = "stop_after"
 SERVICE_LOAD_DSP_PRESET: Final = "load_dsp_preset"
 
+# the wake_on_lan core integration stopped exporting its service name in 2026.11
+WOL_DOMAIN: Final = "wake_on_lan"
+SERVICE_SEND_MAGIC_PACKET: Final = "send_magic_packet"
+
 # service attributes
 ATTR_PLAYLIST_PATH: Final = "playlist_path"
 ATTR_QUERY: Final = "query"

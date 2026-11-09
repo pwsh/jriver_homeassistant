@@ -49,7 +49,7 @@ from .const import (
     TurnOffBehaviour,
 )
 from .coordinator import MediaServerUpdateCoordinator
-from .entity import server_device_id, zone_device_id
+from .entity import server_device_fields, server_device_id, zone_device_id
 from .mcws import MediaServer, get_mcws_connection
 from .models import JRiverConfigEntry, JRiverRuntimeData
 from .services import async_register_services
@@ -154,6 +154,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: JRiverConfigEntry) -> bo
     await coordinator.async_config_entry_first_refresh()
     await _async_migrate_zone_unique_ids(hass, entry)
     _async_remove_stale_devices(hass, entry)
+    # zone devices link to this by id, so it has to exist before the platforms load
+    entry.runtime_data.server_registry_id = (
+        dr.async_get(hass)
+        .async_get_or_create(config_entry_id=entry.entry_id, **server_device_fields(entry))
+        .id
+    )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True

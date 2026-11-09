@@ -46,7 +46,7 @@ async def test_server_device_is_created(
 ) -> None:
     """A single server device is registered."""
     devices = dr.async_get(hass)
-    device = devices.async_get_device(identifiers={(DOMAIN, ACCESS_KEY)})
+    device = devices.async_get_device_by_identifier((DOMAIN, ACCESS_KEY), init_integration.entry_id)
     assert device is not None
     assert device.manufacturer == "JRiver"
     assert device.model == "Media Center (Windows)"
@@ -54,7 +54,9 @@ async def test_server_device_is_created(
 
 
 async def test_zone_devices_are_created(
-    hass: HomeAssistant, mock_media_server: FakeMediaServer
+    hass: HomeAssistant,
+    mock_media_server: FakeMediaServer,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """Per zone mode creates a device per zone linked to the server."""
     entry = build_entry(
@@ -63,11 +65,12 @@ async def test_zone_devices_are_created(
     await setup_integration(hass, entry)
 
     devices = dr.async_get(hass)
-    server = devices.async_get_device(identifiers={(DOMAIN, ACCESS_KEY)})
-    zone = devices.async_get_device(identifiers={(DOMAIN, f"{ACCESS_KEY}_zone_10")})
+    server = devices.async_get_device_by_identifier((DOMAIN, ACCESS_KEY), entry.entry_id)
+    zone = devices.async_get_device_by_identifier((DOMAIN, f"{ACCESS_KEY}_zone_10"), entry.entry_id)
     assert zone is not None
     assert zone.via_device_id == server.id
     assert zone.name == "Phosphorus Player"
+    assert "deprecated `via_device`" not in caplog.text
 
 
 @pytest.mark.parametrize(
@@ -266,10 +269,12 @@ async def test_stale_devices_are_removed(
 
     assert devices.async_get(legacy.id) is None
     assert devices.async_get(gone.id) is None
-    assert devices.async_get_device(identifiers={(DOMAIN, ACCESS_KEY)}) is not None
+    assert devices.async_get_device_by_identifier((DOMAIN, ACCESS_KEY), entry.entry_id) is not None
     for zone_id in (10, 20):
         assert (
-            devices.async_get_device(identifiers={(DOMAIN, f"{ACCESS_KEY}_zone_{zone_id}")})
+            devices.async_get_device_by_identifier(
+                (DOMAIN, f"{ACCESS_KEY}_zone_{zone_id}"), entry.entry_id
+            )
             is not None
         )
 
@@ -284,8 +289,8 @@ async def test_remove_config_entry_device(
     await setup_integration(hass, entry)
 
     devices = dr.async_get(hass)
-    server = devices.async_get_device(identifiers={(DOMAIN, ACCESS_KEY)})
-    zone = devices.async_get_device(identifiers={(DOMAIN, f"{ACCESS_KEY}_zone_10")})
+    server = devices.async_get_device_by_identifier((DOMAIN, ACCESS_KEY), entry.entry_id)
+    zone = devices.async_get_device_by_identifier((DOMAIN, f"{ACCESS_KEY}_zone_10"), entry.entry_id)
     assert await async_remove_config_entry_device(hass, entry, server) is False
     assert await async_remove_config_entry_device(hass, entry, zone) is False
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.0.2
+
+- Fix setup failing on Home Assistant 2026.11, where the `wake_on_lan` integration no longer
+  exports `SERVICE_SEND_MAGIC_PACKET`.
+- Add local brand images and an integration category for the Home Assistant Marketplace.
+- Link zone devices to the server with `via_device_id`, as `via_device` stops working in Home
+  Assistant 2027.8.
+- Point the manifest's code owner, documentation and issue tracker at this fork.
+
 ## 2.0.1
 
 - Remove the empty per-entity devices left behind by 0.4.x and devices for zones that no
